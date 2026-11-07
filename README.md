@@ -56,20 +56,46 @@ bash infra/scripts/05-verificar-salud.sh   # espera réplicas running y /healthz
 
 ### Primer uso
 
-El sistema arranca sin usuarios. Registra un administrador y haz login:
+El sistema arranca **sin usuarios**: hay que crear el primero antes de poder entrar. Puedes hacerlo desde la interfaz web (http://localhost:8090) o por API con los tres pasos siguientes.
+
+**Paso 1 — Registrar un administrador.** Crea el usuario inicial con rol `Admin`:
 
 ```bash
 curl -X POST http://localhost:8090/api/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"correo":"admin@clinicacore.test","password":"Admin123!","rol":"Admin"}'
+```
 
+Devuelve `201 Created` con los datos del usuario creado (sin contraseña).
+
+**Paso 2 — Iniciar sesión.** Con las mismas credenciales, pide el token:
+
+```bash
 curl -X POST http://localhost:8090/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"correo":"admin@clinicacore.test","password":"Admin123!"}'
-# → devuelve { "token": "<JWT>" }, úsalo como  Authorization: Bearer <JWT>
 ```
 
-Hay ejemplos de peticiones listos en `backend/gateway/ClinicaCore.Gateway.http` y `backend/api/ClinicaCore.Api.http`.
+Devuelve `200 OK` con un JWT:
+
+```json
+{ "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...." }
+```
+
+**Paso 3 — Usar el token.** Copia el valor de `token` y envíalo en la cabecera `Authorization` de las peticiones protegidas, con el prefijo `Bearer`. Por ejemplo, listar diagnósticos:
+
+```bash
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...."   # el token del paso 2
+
+curl http://localhost:8090/api/diagnosticos \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Sin ese encabezado, los endpoints protegidos responden `401 Unauthorized`; con un rol sin permiso para la operación, responden `403 Forbidden`.
+
+> Permisos por rol: lectura para cualquier usuario autenticado; crear y editar diagnósticos y resultados tratantes para `Admin` y `Medico`; borrar solo para `Admin`.
+
+Hay ejemplos de peticiones listos para ejecutar en `backend/gateway/ClinicaCore.Gateway.http` y `backend/api/ClinicaCore.Api.http`.
 
 ### Limpieza
 
