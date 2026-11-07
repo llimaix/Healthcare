@@ -16,6 +16,12 @@ public class Paciente
     public char Genero { get; set; }
     public string TipoSangre { get; set; } = null!;
 
+    /// <summary>
+    /// Marca de borrado logico. Los pacientes con Activo=false quedan fuera de las
+    /// consultas gracias al filtro global definido en PacienteConfiguration.
+    /// </summary>
+    public bool Activo { get; set; }
+
     public ICollection<Cita> Citas { get; set; } = new List<Cita>();
     public HistorialClinico? HistorialClinico { get; set; }
     public ICollection<AsociadoSeguro> AsociadosSeguro { get; set; } = new List<AsociadoSeguro>();

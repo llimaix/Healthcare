@@ -39,9 +39,12 @@ public class PacienteConfiguration : IEntityTypeConfiguration<Paciente>
         // genero acepta solo 'F' o 'M' (como en la captura). Se restringe con CHECK.
         builder.Property(p => p.Genero).HasColumnName("genero").HasColumnType("char(1)").IsRequired();
         builder.Property(p => p.TipoSangre).HasColumnName("tipo_sangre").HasMaxLength(5).IsRequired();
+        // Borrado logico: activo=true por defecto; el filtro global excluye los inactivos.
+        builder.Property(p => p.Activo).HasColumnName("activo").HasDefaultValue(true);
 
         builder.HasIndex(p => p.Cui).IsUnique();
         builder.ToTable(t => t.HasCheckConstraint("ck_paciente_genero", "`genero` IN ('F','M')"));
+        builder.HasQueryFilter(p => p.Activo);
     }
 }
 
