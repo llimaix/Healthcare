@@ -1,0 +1,47 @@
+# .NET / build artifacts
+bin/
+obj/
+out/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+
+# Build results y herramientas
+*.user
+*.suo
+*.userprefs
+.vs/
+artifacts/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+
+# Rider / VS Code
+.idea/
+*.sln.iml
+
+# Resultados de pruebas
+[Tt]est[Rr]esult*/
+TestResults/
+*.trx
+*.coverage
+*.coverage.xml
+coverage/
+
+# Herramientas locales de dotnet (se restauran con `dotnet tool restore`)
+# El manifiesto .config/dotnet-tools.json SI se versiona.
+
+# SO
+.DS_Store
+Thumbs.db
