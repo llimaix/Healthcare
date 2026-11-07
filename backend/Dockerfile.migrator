@@ -1,0 +1,27 @@
+# Migrator de un solo uso: aplica las migraciones EF Core ya generadas al primario.
+# NO genera migraciones; solo ejecuta 'dotnet ef database update'.
+# Contexto de build: backend/ (necesita la solucion completa y .config/dotnet-tools.json).
+#   docker build -f backend/Dockerfile.migrator -t clinicacore-migrator:local backend
+#
+# Imagen SDK (no runtime): 'dotnet ef' requiere el SDK y las herramientas restauradas.
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS migrator
+WORKDIR /src
+
+# Solucion completa (database/ + sus ProjectReference) y manifiesto de herramientas.
+COPY . .
+
+# dotnet-ef 9.0.11 fijado en .config/dotnet-tools.json (EF Core 9.0.x por Pomelo).
+RUN dotnet tool restore
+# Compila por adelantado para que 'database update' no gaste tiempo en build en cada arranque.
+RUN dotnet build database/ClinicaCore.Database.csproj -c Release
+
+# Entrypoint comun: inyecta la Password del secret mysql_app_password en
+# CLINICACORE_ConnectionStrings__ClinicaCore antes de aplicar las migraciones.
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# El --connection sobreescribe el marcador del IDesignTimeDbContextFactory con la
+# cadena real al primario (con la password ya compuesta por el entrypoint).
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh", "sh", "-c", \
+  "dotnet ef database update --project database/ClinicaCore.Database.csproj --startup-project database/ClinicaCore.Database.csproj --connection \"$CLINICACORE_ConnectionStrings__ClinicaCore\""]

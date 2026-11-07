@@ -16,7 +16,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 
+# Entrypoint que traduce los Docker secrets a configuracion CLINICACORE_ (ver FEAT-002).
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 5080
 ENV ASPNETCORE_URLS=http://+:5080
 
-ENTRYPOINT ["dotnet", "ClinicaCore.Api.dll"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh", "dotnet", "ClinicaCore.Api.dll"]

@@ -16,7 +16,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 
+# Entrypoint comun: el Gateway solo usa el secret jwt_secret (no habla con MySQL).
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 5000
 ENV ASPNETCORE_URLS=http://+:5000
 
-ENTRYPOINT ["dotnet", "ClinicaCore.Gateway.dll"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh", "dotnet", "ClinicaCore.Gateway.dll"]

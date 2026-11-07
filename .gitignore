@@ -50,3 +50,5 @@ Thumbs.db
 node_modules/
 dist/
 *.local
+# Respaldos logicos de MySQL (los genera infra/scripts/06-backup-mysql.sh)
+backups/
