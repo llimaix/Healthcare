@@ -4,7 +4,8 @@
 set -euo pipefail
 
 stack="clinicacore"
-puerto="${PUERTO_WEB:-8080}"
+# 8090 por defecto: coincide con el puerto publicado por nginx en infra/stack.yml.
+puerto="${PUERTO_WEB:-8090}"
 intentos="${INTENTOS:-30}"
 
 echo "Servicios del stack ${stack}:"

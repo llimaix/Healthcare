@@ -13,7 +13,7 @@ los scripts resuelven sus propias rutas relativas a `infra/`.
 | `02-build-imagenes.sh` | Construye las 4 imagenes con tag fijo `:local` (web, gateway, api, migrator). |
 | `03-deploy.sh` | `docker stack deploy -c infra/stack.yml clinicacore`. |
 | `04-migrar.sh` | Dispara el migrator de un solo uso en la red overlay y espera su salida (aplica migraciones EF al primario). |
-| `05-verificar-salud.sh` | Lista servicios, espera a que las replicas esten running y comprueba `/healthz` por nginx (`:8080`). |
+| `05-verificar-salud.sh` | Lista servicios, espera a que las replicas esten running y comprueba `/healthz` por nginx (`:8090`, override con `PUERTO_WEB`). |
 | `06-backup-mysql.sh` | `mysqldump` del primario via `docker exec` a `./backups/` (ignorado por git). |
 | `07-restore-mysql.sh <archivo.sql>` | Restaura un volcado en el primario via `docker exec`. |
 

@@ -27,6 +27,23 @@ else
   docker exec "${cid}" cat /run/secrets/mysql_app_password > "${secret_tmp}/mysql_app_password"
 fi
 
+# MySQL tarda en aceptar conexiones (start_period de 40s en el stack). Si este script
+# corre justo despues de 03-deploy.sh, el primario aun no acepta TCP y el migrator falla
+# con "Unable to connect". Se espera a que mysql-primary responda antes de migrar.
+echo "Esperando a que mysql-primary acepte conexiones ..."
+espera_max="${ESPERA_MYSQL:-60}"   # intentos de 2s (120s por defecto)
+i=0
+until docker run --rm --network "${red}" mysql:8.0 \
+        mysqladmin ping -h mysql-primary -P 3306 --silent >/dev/null 2>&1; do
+  i=$((i + 1))
+  if [ "${i}" -ge "${espera_max}" ]; then
+    echo "mysql-primary no respondio tras $((espera_max * 2))s. Revisa 'docker service ps clinicacore_mysql-primary'." >&2
+    exit 1
+  fi
+  sleep 2
+done
+echo "mysql-primary disponible."
+
 echo "Aplicando migraciones con clinicacore-migrator:local sobre la red ${red} ..."
 docker run --rm \
   --network "${red}" \

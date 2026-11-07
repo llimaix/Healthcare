@@ -13,12 +13,14 @@ services:
   nginx:
     image: clinicacore-web:local
     ports:
-      - "8080:80"
+      # 8090 en el host (el 8080 lo ocupa otro proyecto, taskmanager-api).
+      - "8090:80"
     networks:
       - clinicacore-net
     healthcheck:
-      # 127.0.0.1 explicito: en Alpine 'localhost' resuelve antes a ::1 (IPv6) y nginx
-      # solo escucha en IPv4, lo que haria fallar el healthcheck con 'connection refused'.
+      # nginx:alpine trae wget (BusyBox), no curl. 127.0.0.1 explicito: en Alpine
+      # 'localhost' resuelve antes a ::1 (IPv6) y nginx solo escucha en IPv4, lo que
+      # haria fallar el healthcheck con 'connection refused'.
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz || exit 1"]
       interval: 10s
       timeout: 5s

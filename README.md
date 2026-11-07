@@ -48,22 +48,22 @@ bash infra/scripts/05-verificar-salud.sh   # espera réplicas running y /healthz
 
 ### Dónde queda corriendo
 
-- **Aplicación web:** http://localhost:8080 (el SPA de React servido por nginx).
-- **API vía el gateway:** http://localhost:8080/api (p. ej. `POST /api/auth/login`).
+- **Aplicación web:** http://localhost:8090 (el SPA de React servido por nginx).
+- **API vía el gateway:** http://localhost:8090/api (p. ej. `POST /api/auth/login`).
 - Los servicios `gateway` (5000), `api` (5080) y MySQL (3306) **no** se publican al host; solo son accesibles dentro de la red overlay.
 
-> Nota: si el puerto `8080` del host está ocupado por otro contenedor, cambia el mapeo de `nginx` en `infra/stack.yml` (`8080:80`) por otro puerto libre y vuelve a desplegar. En la verificación de este repo el `8080` estaba ocupado por un contenedor ajeno, por eso la prueba end-to-end se hizo por la red overlay; el detalle está en la doc de despliegue.
+> Nota: el stack publica nginx en el puerto `8090` del host (el `8080` suele estar ocupado por otro proyecto). Para cambiarlo, edita el mapeo de `nginx` en `infra/stack.yml` (`8090:80`) y vuelve a desplegar.
 
 ### Primer uso
 
 El sistema arranca sin usuarios. Registra un administrador y haz login:
 
 ```bash
-curl -X POST http://localhost:8080/api/auth/register \
+curl -X POST http://localhost:8090/api/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"correo":"admin@clinicacore.test","password":"Admin123!","rol":"Admin"}'
 
-curl -X POST http://localhost:8080/api/auth/login \
+curl -X POST http://localhost:8090/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"correo":"admin@clinicacore.test","password":"Admin123!"}'
 # → devuelve { "token": "<JWT>" }, úsalo como  Authorization: Bearer <JWT>
