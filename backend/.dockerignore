@@ -1,0 +1,21 @@
+# Artefactos de compilacion de .NET (se regeneran dentro de la imagen).
+**/bin/
+**/obj/
+**/out/
+
+# Resultados de pruebas y cobertura.
+**/TestResults/
+**/*.trx
+**/*.coverage
+**/*.coverage.xml
+
+# Variables de entorno locales (nunca entran a la imagen).
+**/.env
+**/.env.*
+**/appsettings.Development.json
+
+# Herramientas de editor.
+**/.vs/
+**/.idea/
+
+# NOTA: database/ NO se excluye; el ProjectReference de api lo necesita.

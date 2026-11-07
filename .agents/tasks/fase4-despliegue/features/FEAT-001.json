@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Imagenes de produccion y punto de entrada nginx. Crea los Dockerfiles multi-stage de la Api, el Gateway y el frontend+nginx, el .dockerignore de backend y frontend, y la config de nginx que sirve el SPA y hace reverse-proxy de /api al Gateway. Es la base: define los artefactos de imagen que FEAT-002 referencia en el stack. Independiente de la capa de orquestacion salvo por los nombres de imagen que expone.",
+  "status": "completed",
+  "steps": [
+    "Crear backend/.dockerignore y frontend/.dockerignore excluyendo bin/, obj/, node_modules/, dist/, y archivos .env locales. No excluir backend/database (el ProjectReference lo necesita).",
+    "Crear backend/Dockerfile.api multi-stage: etapa build sobre mcr.microsoft.com/dotnet/sdk:10.0 que copia la solucion con contexto backend/ (para resolver el ProjectReference de api a database) y hace 'dotnet publish api/ClinicaCore.Api.csproj -c Release -o /app/publish'; etapa runtime sobre mcr.microsoft.com/dotnet/aspnet:10.0 que copia /app/publish, expone 5080, define ASPNETCORE_URLS=http://+:5080 y arranca ClinicaCore.Api.dll. No cambiar versiones de paquetes (EF Core 9.0.x fijado por Pomelo).",
+    "Crear backend/Dockerfile.gateway analogo para gateway/ClinicaCore.Gateway.csproj, expone 5000, ASPNETCORE_URLS=http://+:5000, arranca ClinicaCore.Gateway.dll.",
+    "Crear infra/nginx/default.conf: server que sirve /usr/share/nginx/html con 'try_files $uri $uri/ /index.html' (fallback SPA para React Router), un location /api/ con 'proxy_pass http://gateway:5000;' que propaga Authorization, Host y X-Forwarded-For/Proto, y un location /healthz que devuelve 200.",
+    "Crear frontend/Dockerfile multi-stage: etapa build sobre node:22 que hace 'npm ci' (o npm install si no hay package-lock) y 'npm run build' con VITE_GATEWAY_URL=/api (ARG/ENV de build); etapa runtime sobre nginx:1.27-alpine que copia el dist/ a /usr/share/nginx/html y infra/nginx/default.conf a /etc/nginx/conf.d/default.conf. El contexto de build del frontend es frontend/, asi que la copia de default.conf se resuelve en el stack build o copiando el archivo al contexto; si el contexto no alcanza infra/, documentar el build desde la raiz del repo con -f frontend/Dockerfile y contexto adecuado, o copiar default.conf dentro de frontend/. Elegir una opcion y dejarla consistente con los scripts de FEAT-002."
+  ],
+  "acceptance_criteria": [
+    "docker build -f backend/Dockerfile.api -t clinicacore-api:local backend termina sin error",
+    "docker build -f backend/Dockerfile.gateway -t clinicacore-gateway:local backend termina sin error",
+    "docker build -f frontend/Dockerfile -t clinicacore-web:local <contexto> termina sin error y la imagen contiene dist/ servido por nginx",
+    "docker run --rm -p 8080:80 clinicacore-web:local y curl -I http://localhost:8080/ devuelve 200 con el index.html del SPA",
+    "infra/nginx/default.conf hace proxy_pass de /api a http://gateway:5000 y propaga Authorization"
+  ],
+  "verification": [
+    "docker build -f backend/Dockerfile.api -t clinicacore-api:local backend",
+    "docker build -f backend/Dockerfile.gateway -t clinicacore-gateway:local backend",
+    "docker build -f frontend/Dockerfile -t clinicacore-web:local frontend",
+    "docker run --rm -d -p 8080:80 --name web-smoke clinicacore-web:local && sleep 2 && curl -I http://localhost:8080/ && docker rm -f web-smoke",
+    "docker image ls | grep clinicacore"
+  ],
+  "blocked_reason": null,
+  "findings": "Tags de imagen (para el stack de FEAT-002): clinicacore-api:local (382MB), clinicacore-gateway:local (373MB), clinicacore-web:local (76.3MB). Puertos internos: Api 5080, Gateway 5000, web/nginx 80. Contextos de build: Api y Gateway usan contexto backend/ (necesario para el ProjectReference api->database; el gateway no tiene ProjectReference pero copia la solucion por consistencia) con -f backend/Dockerfile.api / -f backend/Dockerfile.gateway. El frontend usa contexto frontend/ con -f frontend/Dockerfile. DECISION DE CONTEXTO nginx: el default.conf vive en DOS copias que DEBEN mantenerse identicas: infra/nginx/default.conf (canonico) y frontend/nginx/default.conf (la que copia el Dockerfile del frontend, porque su contexto es frontend/ y no alcanza infra/). Si FEAT-002 edita una, editar la otra. DEFECTO ENCONTRADO Y CORREGIDO: con 'proxy_pass http://gateway:5000;' literal, nginx resuelve el upstream en el arranque y el contenedor web solo (sin el servicio gateway en red) abortaba con 'host not found in upstream \"gateway\"'. Se cambio a resolucion en tiempo de peticion: 'resolver 127.0.0.11 valid=10s ipv6=off; set $upstream_gateway gateway; proxy_pass http://$upstream_gateway:5000$request_uri;'. Asi nginx arranca aunque el gateway no exista aun y, en el stack, el DNS de Docker (127.0.0.11) resuelve el nombre 'gateway' en cada peticion. IMPLICACION PARA FEAT-002: el servicio del Gateway en stack.yml DEBE llamarse 'gateway' (nombre usado por el proxy_pass); si se usa otro nombre, actualizar ambos default.conf. El $request_uri conserva el prefijo /api/ hacia el Gateway (que lo espera). Authorization se propaga via 'proxy_set_header Authorization $http_authorization'. nginx tambien expone /healthz -> 200 'ok' (util para healthcheck del servicio web). VITE_GATEWAY_URL=/api se hornea en build via ARG/ENV. npm ci usa el package-lock.json existente (versiones exactas). VERIFICACION FEAT-001 (toda verde): los 3 'docker build' sin error; smoke del web en host:8099 (el 8080 lo ocupa un contenedor ajeno 'taskmanager-api', no del proyecto) -> GET / 200 sirviendo index.html con <div id=\"root\"></div>, GET /pacientes 200 (fallback SPA React Router), GET /healthz 200; docker image ls muestra las 3 imagenes clinicacore."
+}

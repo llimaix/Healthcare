@@ -1,0 +1,22 @@
+# Imagen de produccion de ClinicaCore.Gateway (BFF, :5000).
+# Contexto de build: backend/ (consistente con la Api).
+#   docker build -f backend/Dockerfile.gateway -t clinicacore-gateway:local backend
+
+# --- Etapa build: SDK .NET 10 ---
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Se copia toda la solucion por consistencia con la Api.
+# Las versiones de paquetes NO se tocan (autenticacion fijada en 9.0.x).
+COPY . .
+RUN dotnet publish gateway/ClinicaCore.Gateway.csproj -c Release -o /app/publish
+
+# --- Etapa runtime: ASP.NET Core 10 ---
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+EXPOSE 5000
+ENV ASPNETCORE_URLS=http://+:5000
+
+ENTRYPOINT ["dotnet", "ClinicaCore.Gateway.dll"]

@@ -1,0 +1,22 @@
+# Imagen de produccion de ClinicaCore.Api (servicio de dominio, :5080).
+# Contexto de build: backend/ (necesario para resolver el ProjectReference api -> database).
+#   docker build -f backend/Dockerfile.api -t clinicacore-api:local backend
+
+# --- Etapa build: SDK .NET 10 ---
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Se copia toda la solucion para que api/ resuelva su ProjectReference a database/.
+# Las versiones de paquetes NO se tocan (EF Core 9.0.x fijado por Pomelo).
+COPY . .
+RUN dotnet publish api/ClinicaCore.Api.csproj -c Release -o /app/publish
+
+# --- Etapa runtime: ASP.NET Core 10 ---
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+EXPOSE 5080
+ENV ASPNETCORE_URLS=http://+:5080
+
+ENTRYPOINT ["dotnet", "ClinicaCore.Api.dll"]

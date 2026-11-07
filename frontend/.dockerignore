@@ -1,0 +1,12 @@
+# Dependencias y build: se reinstalan/regeneran dentro de la imagen.
+node_modules/
+dist/
+
+# Variables de entorno locales (VITE_GATEWAY_URL se hornea via ARG en build).
+.env
+.env.*
+
+# Herramientas de editor y logs.
+.vs/
+.idea/
+npm-debug.log*
