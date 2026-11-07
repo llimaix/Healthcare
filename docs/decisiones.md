@@ -4,6 +4,9 @@ Esta fase construye solo la capa de datos EF Core del EMR ClinicaCore. No incluy
 APIs ejecutables, frontend ni infraestructura de Swarm. Fuente de verdad del modelo:
 [`docs/er/modelo-er.md`](er/modelo-er.md) y [`Requirements.md`](../Requirements.md).
 
+> Las decisiones del backend de microservicios (servicios, auth JWT, borrado logico,
+> variables de entorno y ejecucion local) estan en [`docs/fase2-backend.md`](fase2-backend.md).
+
 ## 1. Proveedor MySQL de EF Core elegido
 
 | Paquete | Version | Motivo |

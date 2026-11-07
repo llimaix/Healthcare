@@ -1,0 +1,76 @@
+### ClinicaCore.Api — ejemplos de request (servicio de dominio)
+### Flujos prioritarios del entregable: diagnosticos y resultados tratantes con JWT.
+### El servicio de dominio expone /api/* directamente. Ejecutar la Api en el puerto 5080
+### (ver docs/fase2-backend.md: dotnet run --project api --urls http://localhost:5080).
+
+@host = http://localhost:5080
+# Pegar aqui el token devuelto por el login (campo "token" de la respuesta).
+@token =
+
+### 0. Health (sin autenticacion)
+GET {{host}}/health
+
+### 1. Registro de un usuario Medico (ajustar idMedico a un medico existente, o quitarlo)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "correo": "medico@clinicacore.local",
+  "password": "Cambiar.123",
+  "rol": "Medico"
+}
+
+### 2. Login -> devuelve { "token": "..." }. Copiar el token a la variable @token de arriba.
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "correo": "medico@clinicacore.local",
+  "password": "Cambiar.123"
+}
+
+### 3. Perfil del usuario autenticado
+GET {{host}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### 4. Crear diagnostico (rol Admin o Medico). idHistorial e idCita deben existir.
+POST {{host}}/api/diagnosticos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idHistorial": 1,
+  "idCita": 1,
+  "descripcion": "Faringitis aguda",
+  "codigoCie10": "J02.9",
+  "alergias": "Ninguna conocida"
+}
+
+### 5. Listar diagnosticos (cualquier rol autenticado). Filtros opcionales por query.
+GET {{host}}/api/diagnosticos?idPaciente=1
+Authorization: Bearer {{token}}
+
+### 6. Obtener un diagnostico por id
+GET {{host}}/api/diagnosticos/1
+Authorization: Bearer {{token}}
+
+### 7. Crear resultado tratante (rol Admin o Medico). idMedico debe existir.
+POST {{host}}/api/resultados-tratantes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idMedico": 1,
+  "idEstudio": null,
+  "idDiagnostico": 1,
+  "descripcion": "Radiografia de torax sin hallazgos agudos",
+  "conclusion": "Control en 15 dias"
+}
+
+### 8. Listar resultados tratantes. Filtros opcionales por query.
+GET {{host}}/api/resultados-tratantes?idDiagnostico=1
+Authorization: Bearer {{token}}
+
+### 9. Obtener un resultado tratante por id
+GET {{host}}/api/resultados-tratantes/1
+Authorization: Bearer {{token}}

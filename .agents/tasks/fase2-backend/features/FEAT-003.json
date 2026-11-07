@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-003",
+  "type": "docs",
+  "description": "Cierre de fase 2: ejemplos de request invocables (.http por servicio) para los flujos prioritarios con JWT, y documentacion en docs/ con la particion final de servicios y su justificacion, el diseno de auth (roles, permisos, vida del JWT), la semantica de borrado logico de paciente, las variables de entorno por servicio y como ejecutar los servicios en local sin Docker. Depende de FEAT-001 y FEAT-002 (el codigo final debe existir para documentar ejemplos reales).",
+  "status": "completed",
+  "steps": [
+    "Crear backend/api/ClinicaCore.Api.http y backend/gateway/ClinicaCore.Gateway.http con: POST login para obtener token, y llamadas autenticadas (Authorization: Bearer) a crear/listar diagnosticos y resultados tratantes. Variables al inicio del archivo para host y token.",
+    "Crear docs/fase2-backend.md con: (1) particion final de servicios (Gateway/BFF + un servicio de dominio Api) y justificacion; (2) diseno de auth: roles Admin/Medico/Recepcion/Lectura y sus permisos, hash PasswordHasher, JWT HS256, access token 60 min, sin refresh token en esta fase; (3) semantica de borrado: borrado logico de paciente (columna activo + filtro global), FKs clinicas en Restrict, sin cascada fisica; (4) variables de entorno por servicio (ConnectionStrings:ClinicaCore, Jwt:Secret/Issuer/Audience/AccessTokenMinutes, Services:ApiBaseUrl) con prefijo CLINICACORE_ y separador __; (5) como ejecutar en local: dotnet run por proyecto, orden (Api luego Gateway), puertos, provision del secreto JWT por user-secrets/env.",
+    "Enlazar docs/fase2-backend.md desde docs/decisiones.md (una referencia; no reescribir la seccion de fase 1).",
+    "NO modificar ni commitear README.md (tiene un typo sin commitear) ni la carpeta docs/review/.",
+    "Commitear en main con mensaje en espanol (p. ej. 'ejemplos .http y documentacion de fase 2')."
+  ],
+  "acceptance_criteria": [
+    "Los archivos .http permiten obtener un token por login y usarlo como Bearer en los endpoints prioritarios de diagnosticos y resultados tratantes.",
+    "docs/fase2-backend.md cubre las 4 areas del punto 8 de la tarea (particion+justificacion, diseno de auth, variables de entorno, ejecucion local) mas la semantica de borrado, y coincide con lo implementado.",
+    "README.md y docs/review/ no aparecen en los commits de esta feature.",
+    "`cd backend && dotnet build` sigue en 0/0 y `cd backend && dotnet test` sigue verde."
+  ],
+  "verification": [
+    "cd backend && dotnet build",
+    "cd backend && dotnet test"
+  ],
+  "blocked_reason": null,
+  "findings": "Entregados backend/api/ClinicaCore.Api.http y backend/gateway/ClinicaCore.Gateway.http (login + Bearer sobre diagnosticos y resultados tratantes), docs/fase2-backend.md (particion de servicios + justificacion, auth, borrado logico, variables de entorno con prefijo CLINICACORE_ y separador __, ejecucion local) y referencia desde docs/decisiones.md. Datos reales usados en la doc: la Api corre en el puerto 5080 (lo exige Services:ApiBaseUrl del gateway) y el Gateway en 5000; no hay launchSettings.json, por eso se documenta arrancar con 'dotnet run --project <api|gateway> --urls'. Roles sembrados por RolSeeder: Admin/Medico/Recepcion/Lectura. Permisos de los flujos prioritarios: lectura cualquier autenticado, escritura Admin+Medico, DELETE solo Admin. JWT HS256, access 60 min, sin refresh. Borrado logico de paciente por columna activo + filtro global; FKs clinicas en Restrict. Verificacion sobre este commit: 'cd backend && dotnet build' = 0 advertencias/0 errores (TreatWarningsAsErrors), 'cd backend && dotnet test' = 33 pruebas superadas (12 fase 1 + 21 fase 2). Las advertencias EF 'Model.Validation[10622]' que aparecen en dotnet test son logs runtime de codigo de FEAT-001/002, no advertencias de compilacion. README.md y docs/review/ no se tocaron."
+}

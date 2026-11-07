@@ -1,0 +1,58 @@
+### ClinicaCore.Gateway — ejemplos de request (BFF / puerta de entrada)
+### El Gateway reenvia /api/* al servicio de dominio propagando el header Authorization.
+### Los flujos prioritarios (diagnosticos y resultados tratantes) se consumen igual que en
+### la Api, pero entrando por el Gateway. Ejecutar el Gateway en el puerto 5000 y la Api en
+### el 5080 (ver docs/fase2-backend.md). /api/auth/* es anonimo; el resto exige JWT valido.
+
+@host = http://localhost:5000
+# Pegar aqui el token devuelto por el login (campo "token" de la respuesta).
+@token =
+
+### 0. Health del Gateway (sin autenticacion)
+GET {{host}}/health
+
+### 1. Login a traves del Gateway -> { "token": "..." }. Copiar a la variable @token.
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "correo": "medico@clinicacore.local",
+  "password": "Cambiar.123"
+}
+
+### 2. Crear diagnostico via Gateway (rol Admin o Medico)
+POST {{host}}/api/diagnosticos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idHistorial": 1,
+  "idCita": 1,
+  "descripcion": "Faringitis aguda",
+  "codigoCie10": "J02.9",
+  "alergias": "Ninguna conocida"
+}
+
+### 3. Listar diagnosticos via Gateway
+GET {{host}}/api/diagnosticos?idPaciente=1
+Authorization: Bearer {{token}}
+
+### 4. Crear resultado tratante via Gateway (rol Admin o Medico)
+POST {{host}}/api/resultados-tratantes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idMedico": 1,
+  "idEstudio": null,
+  "idDiagnostico": 1,
+  "descripcion": "Radiografia de torax sin hallazgos agudos",
+  "conclusion": "Control en 15 dias"
+}
+
+### 5. Listar resultados tratantes via Gateway
+GET {{host}}/api/resultados-tratantes?idDiagnostico=1
+Authorization: Bearer {{token}}
+
+### 6. Sin token el Gateway responde 401 (la autorizacion se exige antes de reenviar)
+GET {{host}}/api/diagnosticos
