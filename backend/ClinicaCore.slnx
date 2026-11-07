@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/database/">
+    <Project Path="database/ClinicaCore.Database.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ClinicaCore.Database.Tests.csproj" />
+  </Folder>
+</Solution>
