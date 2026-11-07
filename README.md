@@ -56,9 +56,9 @@ bash infra/scripts/05-verificar-salud.sh   # espera réplicas running y /healthz
 
 ### Primer uso
 
-El sistema arranca **sin usuarios**: hay que crear el primero antes de poder entrar. Puedes hacerlo desde la interfaz web (http://localhost:8090) o por API con los tres pasos siguientes.
+El sistema arranca **sin usuarios**: hay que crear el primero antes de poder entrar. Si vas a usar los datos de demostración, puedes saltarte esta sección: el [paso opcional](#paso-opcional--cargar-datos-de-demostración) crea un usuario por rol. Si no, sigue estos tres pasos por API.
 
-**Paso 1 — Registrar un administrador.** Crea el usuario inicial con rol `Admin`:
+**Paso 1 — Registrar el primer administrador.** Mientras no exista ningún usuario, `register` acepta una petición sin token, y solo para crear un usuario con rol `Admin`:
 
 ```bash
 curl -X POST http://localhost:8090/api/auth/register \
@@ -66,7 +66,7 @@ curl -X POST http://localhost:8090/api/auth/register \
   -d '{"correo":"admin@clinicacore.test","password":"Admin123!","rol":"Admin"}'
 ```
 
-Devuelve `201 Created` con los datos del usuario creado (sin contraseña).
+Devuelve `201 Created` con los datos del usuario creado (sin contraseña). A partir de ese momento el registro se cierra: sin token responde `401`, y con un rol distinto de `Admin` responde `403`. Los siguientes usuarios los crea el administrador desde la pantalla **Usuarios** o con `register` enviando su token.
 
 **Paso 2 — Iniciar sesión.** Con las mismas credenciales, pide el token:
 
@@ -97,28 +97,35 @@ Hay ejemplos de peticiones listos para ejecutar en `backend/gateway/ClinicaCore.
 
 ### Roles y accesos
 
-El sistema define cuatro roles. El `register` del Paso 1 acepta cualquiera de ellos (`Admin`, `Medico`, `Recepcion`, `Lectura`); normalmente el primer usuario es `Admin` y desde ahí se crean los demás. Toda lectura exige estar autenticado (token válido); las escrituras dependen del rol.
+El sistema define cuatro roles: `Admin`, `Medico`, `Recepcion` y `Lectura`. Toda lectura exige estar autenticado; las escrituras dependen del rol. El backend aplica estos permisos (responde `403`), y la interfaz oculta los botones y pantallas que el rol no puede usar.
 
-| Recurso | Leer (GET) | Crear (POST) | Editar (PUT) | Borrar (DELETE) |
+| Recurso | Leer | Crear | Editar | Borrar |
 |---|---|---|---|---|
-| Diagnósticos | Autenticado | Admin, Medico | Admin, Medico | Admin |
-| Resultados tratantes | Autenticado | Admin, Medico | Admin, Medico | Admin |
-| Pacientes | Autenticado | Admin, Medico, Recepcion | Admin, Medico, Recepcion | Admin |
-| Historial clínico | Autenticado | Admin, Medico | Admin, Medico | — |
-| Citas | Autenticado | Admin, Medico, Recepcion | Admin, Medico, Recepcion | Admin |
-| Médicos | Autenticado | Admin | Admin | — |
-| Usuarios | `register` es público (crea usuarios); `GET /api/auth/me` devuelve el usuario del token | — | — | — |
+| Pacientes | Todos | Admin, Medico, Recepcion | Admin, Medico, Recepcion | Admin (baja lógica) |
+| Citas | Todos | Admin, Medico, Recepcion | Admin, Medico, Recepcion | Admin |
+| Historial clínico | Todos | Admin, Medico | Admin, Medico | — |
+| Diagnósticos | Todos | Admin, Medico | Admin, Medico | Admin |
+| Resultados tratantes | Todos | Admin, Medico | Admin, Medico | Admin |
+| Médicos | Todos | Admin | Admin | — |
+| Usuarios | Admin | Admin | Admin (rol, estado, médico vinculado) | — (se desactivan) |
 
-Resumen por rol:
+Qué ve cada rol en la interfaz (http://localhost:8090):
 
-- **Admin:** acceso total. Es el único que puede borrar y el único que gestiona médicos.
-- **Medico:** crea y edita datos clínicos (diagnósticos, resultados tratantes, historiales, pacientes, citas). No borra.
-- **Recepcion:** gestiona pacientes y citas (crear y editar). No toca datos clínicos ni borra.
-- **Lectura:** solo consulta; no puede escribir nada.
+| Rol | Pantalla inicial | Menú | Puede hacer |
+|---|---|---|---|
+| **Admin** | Diagnósticos | Todas, incluida **Usuarios** | Registrar, editar y eliminar en todas las pantallas; registrar médicos; crear usuarios, cambiarles el rol y desactivarlos. |
+| **Medico** | Diagnósticos | Todas menos Usuarios | Registrar y editar pacientes, citas, historiales, diagnósticos y resultados tratantes. No elimina ni registra médicos. |
+| **Recepcion** | Pacientes | Todas menos Usuarios | Registrar y editar pacientes y agendar citas. Diagnósticos, resultados y médicos solo en consulta. |
+| **Lectura** | Diagnósticos | Todas menos Usuarios | Solo consulta: no aparece ningún botón de registrar, editar ni eliminar. |
 
-Sin token, los endpoints protegidos responden `401 Unauthorized`; con un rol sin permiso para la operación, responden `403 Forbidden`.
+Debajo de la barra superior, cada pantalla muestra un aviso con el rol activo y lo que puede hacer.
 
-> Nota sobre la interfaz web: la UI actual incluye las pantallas de **Login**, **Diagnósticos** y **Resultados tratantes** (las dos evidencias del entregable). La gestión de pacientes, médicos, citas y usuarios está disponible **por API** (ver los `.http` y la tabla de arriba), pero aún no tiene pantallas propias en el frontend.
+Reglas adicionales:
+
+- Un paciente necesita un **historial clínico** abierto para recibir diagnósticos. Admin y Medico lo abren al registrar al paciente o con el botón **Abrir historial**; Recepcion registra al paciente y el médico abre el historial después.
+- Un usuario **desactivado** no puede iniciar sesión.
+- Un Admin no puede quitarse su propio rol ni desactivar su cuenta, para que el sistema no quede sin administrador.
+- Una cita con diagnósticos, recetas, estudios o facturación asociados no se puede eliminar (`409`).
 
 ### Paso opcional — Cargar datos de demostración
 
@@ -131,20 +138,20 @@ bash infra/scripts/08-cargar-demo.sh
 El script hace dos cosas:
 
 1. Aplica [`infra/mysql/seed-demo.sql`](infra/mysql/seed-demo.sql) sobre el primario (médicos, pacientes, historiales, citas, diagnósticos y resultados tratantes). Los datos se replican solos a la réplica.
-2. Crea **un usuario por cada rol** llamando al endpoint `register` a través de nginx (no por SQL, porque la contraseña se guarda con hash).
+2. Crea **un usuario por cada rol** con `register` a través de nginx (no por SQL, porque la contraseña se guarda con hash). Primero crea el Admin, que solo es posible con el sistema vacío; después inicia sesión con él y registra a los demás con su token. El usuario `medico` queda vinculado a la médica Ana García del seed.
 
-Es **idempotente**: los datos usan `WHERE NOT EXISTS` y los usuarios ya existentes se detectan por el `409` de `register`, así que puedes ejecutarlo varias veces sin duplicar nada. Todo es ficticio y solo sirve para la demostración; este paso no es necesario para que el sistema funcione.
+Es **idempotente**: los datos usan `WHERE NOT EXISTS` y los usuarios existentes se detectan por el `409` de `register`, así que puedes ejecutarlo varias veces sin duplicar nada. Si el primer Admin se creó con otras credenciales, exporta `DEMO_ADMIN_CORREO` y `DEMO_ADMIN_PASSWORD` antes de correrlo. Todo es ficticio y solo sirve para la demostración; este paso no es necesario para que el sistema funcione.
 
 **Usuarios de demostración** (para iniciar sesión en http://localhost:8090 y mostrar los accesos de cada rol):
 
-| Correo | Contraseña | Rol | Puede |
+| Correo | Contraseña | Rol | Qué verás al entrar |
 |---|---|---|---|
-| `admin@clinicacore.test` | `Admin123!` | Admin | Todo: leer, crear, editar y borrar; gestiona médicos. |
-| `medico@clinicacore.test` | `Demo123!` | Medico | Crear/editar datos clínicos (diagnósticos, resultados, historiales, pacientes, citas). No borra. |
-| `recepcion@clinicacore.test` | `Demo123!` | Recepcion | Crear/editar pacientes y citas. No toca datos clínicos ni borra. |
-| `lectura@clinicacore.test` | `Demo123!` | Lectura | Solo consultar; no puede escribir nada. |
+| `admin@clinicacore.test` | `Admin123!` | Admin | Todas las pantallas, incluida **Usuarios**. Botones de registrar, editar y eliminar en todas. |
+| `medico@clinicacore.test` | `Demo123!` | Medico | **Registrar paciente**, **Agendar cita**, **Nuevo diagnóstico**, **Nuevo resultado** y **Abrir historial**. Sin botones de eliminar ni de registrar médicos. |
+| `recepcion@clinicacore.test` | `Demo123!` | Recepcion | Entra a Pacientes. **Registrar paciente** y **Agendar cita**. Diagnósticos, resultados y médicos solo en consulta. |
+| `lectura@clinicacore.test` | `Demo123!` | Lectura | Todas las tablas en consulta; ningún botón de registrar, editar ni eliminar. |
 
-El detalle de permisos por recurso está en la tabla de [Roles y accesos](#roles-y-accesos). Tras la carga, inicia sesión con cualquiera de estos usuarios y las pantallas de **Diagnósticos** y **Resultados tratantes** aparecerán pobladas.
+El detalle de permisos por recurso está en la tabla de [Roles y accesos](#roles-y-accesos).
 
 ### Limpieza
 
