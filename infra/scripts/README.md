@@ -16,6 +16,7 @@ los scripts resuelven sus propias rutas relativas a `infra/`.
 | `05-verificar-salud.sh` | Lista servicios, espera a que las replicas esten running y comprueba `/healthz` por nginx (`:8090`, override con `PUERTO_WEB`). |
 | `06-backup-mysql.sh` | `mysqldump` del primario via `docker exec` a `./backups/` (ignorado por git). |
 | `07-restore-mysql.sh <archivo.sql>` | Restaura un volcado en el primario via `docker exec`. |
+| `08-cargar-demo.sh` | **Opcional.** Carga `infra/mysql/seed-demo.sql` (datos ficticios) en el primario para demostración. Idempotente; se replican solos a la réplica. |
 
 ## Flujo tipico de despliegue
 

@@ -97,6 +97,18 @@ Sin ese encabezado, los endpoints protegidos responden `401 Unauthorized`; con u
 
 Hay ejemplos de peticiones listos para ejecutar en `backend/gateway/ClinicaCore.Gateway.http` y `backend/api/ClinicaCore.Api.http`.
 
+### Paso opcional — Cargar datos de demostración
+
+Cuando el stack **ya esté estable** (migraciones aplicadas y réplicas running, es decir, tras los pasos 04 y 05), puedes cargar un conjunto de datos genéricos para la demostración y las capturas: médicos, pacientes, historiales, citas, diagnósticos y resultados tratantes.
+
+```bash
+bash infra/scripts/08-cargar-demo.sh
+```
+
+El script aplica [`infra/mysql/seed-demo.sql`](infra/mysql/seed-demo.sql) sobre el primario; los datos se replican solos a la réplica. Es **idempotente** (usa `WHERE NOT EXISTS`), así que puedes ejecutarlo más de una vez sin duplicar filas. Los datos son ficticios y solo sirven para demostración; este paso no es necesario para que el sistema funcione.
+
+Tras la carga, inicia sesión y abrirás las pantallas de **Diagnósticos** y **Resultados tratantes** ya pobladas.
+
 ### Limpieza
 
 ```bash
@@ -115,7 +127,7 @@ docker stack rm clinicacore
 ```
 ├── backend/          # Solución .NET 10: Api de dominio, Gateway/BFF, capa de datos (EF Core) y tests
 ├── frontend/         # App React + TypeScript (Vite)
-├── infra/            # nginx, MySQL (primario/réplica), stack.yml de Swarm y scripts 00–07
+├── infra/            # nginx, MySQL (primario/réplica + seed-demo.sql), stack.yml de Swarm y scripts 00–08
 ├── docs/             # Modelo ER, decisiones y guías por fase
 ├── Requirements.md   # Requerimientos del proyecto
 └── README.md
