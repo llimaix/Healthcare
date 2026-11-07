@@ -133,4 +133,46 @@ pruebas (`dotnet test`), que corren sobre InMemory.
 |---|---|
 | `dotnet tool restore` | Restaura `dotnet-ef 9.0.11`. |
 | `dotnet build` | Compilacion correcta, 0 advertencias y 0 errores (`TreatWarningsAsErrors=true`). |
-| `dotnet test` | Todas las pruebas superadas (las 12 del modelo de fase 1 mas las de auth, diagnosticos y resultados tratantes). |
+| `dotnet test` | Todas las pruebas superadas (las 12 del modelo de fase 1; las de auth, diagnosticos y resultados tratantes de la Api; la unitaria de `DbErrorTraductor`; y las del reenvio del Gateway). Dos pruebas de integracion contra MySQL quedan omitidas (`[Skip]`) por no haber MySQL en el entorno; ver seccion 7. |
+
+## 7. Cierre de los hallazgos no bloqueantes de la revision
+
+La revision de fase 2 dejo dos hallazgos no bloqueantes; ambos quedan cerrados asi:
+
+### 7.1 Reenvio de cuerpos chunked en el Gateway
+
+El reenvio del Gateway (`ClinicaCoreApiClient.ReenviarAsync`) decidia adjuntar el cuerpo de
+la peticion solo cuando habia `Content-Length > 0` o un header `Transfer-Encoding`. Una
+peticion con cuerpo chunked llega sin `Content-Length` y, segun el cliente, sin que ese
+header aparezca en `HttpRequest.Headers`, por lo que el cuerpo se omitia al reenviar.
+
+Ahora el reenvio decide por metodo: si el `Content-Length` es desconocido (nulo) y el metodo
+admite cuerpo (`POST`/`PUT`/`PATCH`, no `GET`/`HEAD`/`DELETE`/`OPTIONS`/`TRACE`/`CONNECT`), el
+cuerpo se reenvia igualmente. Se preserva el comportamiento previo para peticiones con
+`Content-Length` y la propagacion del header `Authorization`.
+
+Cubierto por `backend/tests-gateway/ReenvioTests.cs`: el reenvio de cuerpo sin
+`Content-Length` (falla sin el arreglo), el reenvio con `Content-Length`, que un `GET` no
+adjunta cuerpo, y la propagacion de `Authorization`.
+
+### 7.2 Cobertura del camino 409/400 sobre MySQL real
+
+`DbErrorTraductor` traduce las violaciones de restriccion que afloran como
+`DbUpdateException` al guardar en MySQL (indice unico de `cui`/`colegiado` -> 409; CHECK
+`ck_paciente_genero` -> 400). El proveedor InMemory de las pruebas no dispara esas
+restricciones, por lo que ese camino no tenia cobertura automatizada.
+
+- **Verificado sin MySQL:** `backend/tests-api/DbErrorTraductorTests.cs` ejercita el
+  traductor de forma directa, envolviendo en `DbUpdateException` un mensaje representativo
+  del que MySQL produce para cada restriccion, y confirma el 409/400 (y `null` para errores
+  desconocidos). Nota de fidelidad: `MySqlConnector` no expone un constructor publico de
+  `MySqlException`, asi que no es viable construir aqui una instancia real con sus numeros de
+  error (1062 duplicado, 3819 CHECK); el traductor solo inspecciona el texto del mensaje, que
+  es lo que estas pruebas reproducen.
+- **Pendiente de infraestructura (no verificado):** la prueba de que una `MySqlException`
+  real dispara el 409/400 queda escrita y **omitida** en
+  `backend/tests-api/ConflictoMySqlIntegrationTests.cs` (`[Fact(Skip = ...)]`), porque en
+  este entorno el daemon de Docker esta apagado y no hay MySQL. El encabezado de esa clase
+  explica como habilitarla: levantar MySQL 8, aplicar migraciones, exportar
+  `CLINICACORE_TEST_MYSQL` con la cadena de conexion y quitar el `Skip`. No se ha ejecutado
+  contra MySQL real todavia.
