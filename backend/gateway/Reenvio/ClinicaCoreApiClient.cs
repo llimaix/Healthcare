@@ -26,7 +26,7 @@ public class ClinicaCoreApiClient
         var destino = entrante.Path + entrante.QueryString;
         var solicitud = new HttpRequestMessage(new HttpMethod(entrante.Method), destino);
 
-        if (entrante.ContentLength is > 0 || entrante.Headers.ContainsKey("Transfer-Encoding"))
+        if (TieneCuerpo(entrante))
         {
             var contenido = new StreamContent(entrante.Body);
             if (MediaTypeHeaderValue.TryParse(entrante.ContentType, out var tipo))
@@ -43,4 +43,31 @@ public class ClinicaCoreApiClient
 
         return await _http.SendAsync(solicitud, HttpCompletionOption.ResponseHeadersRead, ct);
     }
+
+    /// <summary>
+    /// Decide si la peticion entrante trae un cuerpo que debe reenviarse. Ademas de los
+    /// casos con Content-Length conocido (&gt; 0) o Transfer-Encoding explicito, cubre el
+    /// reenvio de cuerpos chunked: cuando el metodo admite cuerpo y la longitud es
+    /// desconocida (Content-Length nulo), el cuerpo se envia igualmente para no omitirlo.
+    /// Los metodos sin cuerpo (GET/HEAD/DELETE/OPTIONS/TRACE/CONNECT) no adjuntan contenido.
+    /// </summary>
+    private static bool TieneCuerpo(HttpRequest entrante)
+    {
+        if (entrante.ContentLength is > 0 || entrante.Headers.ContainsKey("Transfer-Encoding"))
+        {
+            return true;
+        }
+
+        // Content-Length desconocido (nulo): puede ser un cuerpo chunked. Solo se reenvia
+        // en metodos que admiten cuerpo para no adjuntar contenido vacio en GET/HEAD/etc.
+        return entrante.ContentLength is null && MetodoAdmiteCuerpo(entrante.Method);
+    }
+
+    private static bool MetodoAdmiteCuerpo(string metodo) =>
+        !(HttpMethods.IsGet(metodo)
+            || HttpMethods.IsHead(metodo)
+            || HttpMethods.IsDelete(metodo)
+            || HttpMethods.IsOptions(metodo)
+            || HttpMethods.IsTrace(metodo)
+            || HttpMethods.IsConnect(metodo));
 }

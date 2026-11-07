@@ -14,4 +14,7 @@
   <Folder Name="/tests-api/">
     <Project Path="tests-api/ClinicaCore.Api.Tests.csproj" />
   </Folder>
+  <Folder Name="/tests-gateway/">
+    <Project Path="tests-gateway/ClinicaCore.Gateway.Tests.csproj" />
+  </Folder>
 </Solution>
