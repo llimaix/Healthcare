@@ -26,6 +26,8 @@ fi
 root_pw="$(docker exec "${cid}" cat /run/secrets/mysql_root_password)"
 
 echo "Cargando datos de demostracion desde ${seed} en el primario ..."
-docker exec -i "${cid}" sh -c "exec mysql -uroot -p\"${root_pw}\" clinicacore" < "${seed}"
+# --default-character-set=utf8mb4: el seed esta en UTF-8. Sin esto, el cliente mysql
+# usa latin1 por defecto y los acentos/ñ se corrompen (mojibake tipo "MarÃ­a").
+docker exec -i "${cid}" sh -c "exec mysql --default-character-set=utf8mb4 -uroot -p\"${root_pw}\" clinicacore" < "${seed}"
 
 echo "Datos de demostracion cargados. Se replican automaticamente a mysql-replica."
