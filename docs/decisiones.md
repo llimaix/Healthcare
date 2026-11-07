@@ -13,7 +13,7 @@ APIs ejecutables, frontend ni infraestructura de Swarm. Fuente de verdad del mod
 | `Microsoft.EntityFrameworkCore.Relational` | 9.0.11 | Igual que arriba. |
 | `Microsoft.EntityFrameworkCore.Design` | 9.0.11 | Para generar/aplicar migraciones. |
 | `MySqlConnector` | 2.6.2 | Se sube explicitamente por encima del 2.4.0 que trae Pomelo. |
-| `dotnet-ef` (herramienta local) | 9.0.11 | Declarada en `backend/dotnet-tools.json`. |
+| `dotnet-ef` (herramienta local) | 9.0.11 | Declarada en `backend/.config/dotnet-tools.json`. |
 
 ### Nota de compatibilidad .NET 10 / EF Core 9
 
@@ -43,7 +43,8 @@ limpio. *Contenido parafraseado para cumplir con restricciones de licencia.*
 ```
 backend/
 ├── ClinicaCore.slnx                 # Solucion .NET 10 (formato slnx)
-├── dotnet-tools.json                # Manifiesto de herramientas locales (dotnet-ef)
+├── .config/
+│   └── dotnet-tools.json            # Manifiesto de herramientas locales (dotnet-ef)
 ├── database/                        # Biblioteca de clases: capa de datos EF Core
 │   ├── ClinicaCore.Database.csproj
 │   ├── ClinicaCoreDbContext.cs      # DbContext unico (18 entidades)
