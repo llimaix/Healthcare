@@ -118,8 +118,6 @@ Qué ve cada rol en la interfaz (http://localhost:8090):
 | **Recepcion** | Pacientes | Todas menos Usuarios | Registrar y editar pacientes y agendar citas. Diagnósticos, resultados y médicos solo en consulta. |
 | **Lectura** | Diagnósticos | Todas menos Usuarios | Solo consulta: no aparece ningún botón de registrar, editar ni eliminar. |
 
-Debajo de la barra superior, cada pantalla muestra un aviso con el rol activo y lo que puede hacer.
-
 Reglas adicionales:
 
 - Un paciente necesita un **historial clínico** abierto para recibir diagnósticos. Admin y Medico lo abren al registrar al paciente o con el botón **Abrir historial**; Recepcion registra al paciente y el médico abre el historial después.

@@ -78,8 +78,7 @@ el **Gateway** en `:5000` y **MySQL**— remitirse a
 
 Los permisos por rol de la UI viven en `src/auth/permisos.ts` y reflejan los
 `[Authorize(Roles=...)]` de la Api. El menu, los botones y la pantalla inicial dependen del
-rol (Recepcion entra a `/pacientes`; el resto a `/diagnosticos`), y cada pantalla muestra un
-aviso con lo que el rol activo puede hacer.
+rol (Recepcion entra a `/pacientes`; el resto a `/diagnosticos`).
 
 - **COMPLETAS:** todas las de la tabla. Las dos pantallas clinicas del entregable
   (Diagnosticos y Resultados tratantes) tienen acabado presentable (tablas con filtros,

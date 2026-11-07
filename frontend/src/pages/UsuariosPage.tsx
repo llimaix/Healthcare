@@ -6,7 +6,6 @@ import { Layout } from '../components/Layout'
 import { EstadoCarga } from '../components/EstadoCarga'
 import { MensajeError } from '../components/MensajeError'
 import { useAuth } from '../auth/useAuth'
-import { DESCRIPCION_ROL } from '../auth/permisos'
 import { listarMedicos } from '../api/referencias'
 import { actualizarUsuario, listarUsuarios, registrarUsuario } from '../api/gestion'
 import type { MedicoResponse, Rol, UsuarioResponse } from '../types/contratos'
@@ -270,7 +269,6 @@ export function UsuariosPage() {
                   </option>
                 ))}
               </select>
-              <small className="nota">{DESCRIPCION_ROL[form.rol]}</small>
             </label>
             {form.rol === 'Medico' && (
               <label className="campo">

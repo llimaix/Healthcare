@@ -40,14 +40,6 @@ const POR_ROL: Record<Rol, Permisos> = {
   Lectura: SIN_PERMISOS,
 }
 
-/** Descripcion corta de lo que puede hacer cada rol, mostrada en la barra. */
-export const DESCRIPCION_ROL: Record<Rol, string> = {
-  Admin: 'Acceso total: registra, edita y elimina; gestiona médicos y usuarios.',
-  Medico: 'Registra y edita datos clínicos, pacientes y citas. No elimina.',
-  Recepcion: 'Registra y edita pacientes y citas. Datos clínicos solo en consulta.',
-  Lectura: 'Solo consulta. No puede registrar, editar ni eliminar.',
-}
-
 export function permisosDe(rol: Rol | undefined): Permisos {
   return rol ? POR_ROL[rol] : SIN_PERMISOS
 }

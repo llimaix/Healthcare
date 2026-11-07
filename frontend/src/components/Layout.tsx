@@ -1,10 +1,9 @@
 // Layout compartido de las pantallas protegidas: barra con la navegacion que permite
-// el rol, correo y rol del usuario, y boton de cerrar sesion. Debajo, un aviso con lo
-// que el rol puede hacer, para que la diferencia entre roles sea visible.
+// el rol, correo y rol del usuario, y boton de cerrar sesion.
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
-import { DESCRIPCION_ROL, type Permisos } from '../auth/permisos'
+import type { Permisos } from '../auth/permisos'
 
 interface LayoutProps {
   /** Titulo de la pantalla actual, mostrado en la barra. */
@@ -60,11 +59,6 @@ export function Layout({ titulo, children }: LayoutProps) {
           Cerrar sesion
         </button>
       </header>
-      {usuario && (
-        <div className="aviso-rol">
-          <strong>Rol {usuario.rol}:</strong> {DESCRIPCION_ROL[usuario.rol]}
-        </div>
-      )}
       <main className="contenido">{children}</main>
     </div>
   )
