@@ -45,3 +45,8 @@ coverage/
 # SO
 .DS_Store
 Thumbs.db
+
+# Frontend (Node / Vite)
+node_modules/
+dist/
+*.local
