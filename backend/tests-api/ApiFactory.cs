@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using ClinicaCore.Database;
 using ClinicaCore.Database.Entities;
 using Microsoft.AspNetCore.Hosting;
@@ -71,5 +73,38 @@ public class ApiFactory : WebApplicationFactory<Program>
                 await db.SaveChangesAsync();
             }
         });
+    }
+
+    /// <summary>
+    /// Crea un HttpClient autenticado con un usuario nuevo del rol indicado: registra,
+    /// inicia sesion y coloca el token como Bearer en las cabeceras por defecto.
+    /// </summary>
+    public async Task<HttpClient> ClienteAutenticadoAsync(string rol)
+    {
+        var client = CreateClient();
+        var correo = $"{rol.ToLowerInvariant()}-{Guid.NewGuid():N}@clinicacore.test";
+
+        await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            correo,
+            password = "ClaveSegura123",
+            rol,
+        });
+
+        var login = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            correo,
+            password = "ClaveSegura123",
+        });
+        var cuerpo = await login.Content.ReadFromJsonAsync<TokenDto>();
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", cuerpo!.Token);
+        return client;
+    }
+
+    private sealed class TokenDto
+    {
+        public string Token { get; set; } = null!;
     }
 }
