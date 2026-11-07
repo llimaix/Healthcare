@@ -128,9 +128,23 @@ Cuando el stack **ya esté estable** (migraciones aplicadas y réplicas running,
 bash infra/scripts/08-cargar-demo.sh
 ```
 
-El script aplica [`infra/mysql/seed-demo.sql`](infra/mysql/seed-demo.sql) sobre el primario; los datos se replican solos a la réplica. Es **idempotente** (usa `WHERE NOT EXISTS`), así que puedes ejecutarlo más de una vez sin duplicar filas. Los datos son ficticios y solo sirven para demostración; este paso no es necesario para que el sistema funcione.
+El script hace dos cosas:
 
-Tras la carga, inicia sesión y abrirás las pantallas de **Diagnósticos** y **Resultados tratantes** ya pobladas.
+1. Aplica [`infra/mysql/seed-demo.sql`](infra/mysql/seed-demo.sql) sobre el primario (médicos, pacientes, historiales, citas, diagnósticos y resultados tratantes). Los datos se replican solos a la réplica.
+2. Crea **un usuario por cada rol** llamando al endpoint `register` a través de nginx (no por SQL, porque la contraseña se guarda con hash).
+
+Es **idempotente**: los datos usan `WHERE NOT EXISTS` y los usuarios ya existentes se detectan por el `409` de `register`, así que puedes ejecutarlo varias veces sin duplicar nada. Todo es ficticio y solo sirve para la demostración; este paso no es necesario para que el sistema funcione.
+
+**Usuarios de demostración** (para iniciar sesión en http://localhost:8090 y mostrar los accesos de cada rol):
+
+| Correo | Contraseña | Rol | Puede |
+|---|---|---|---|
+| `admin@clinicacore.test` | `Admin123!` | Admin | Todo: leer, crear, editar y borrar; gestiona médicos. |
+| `medico@clinicacore.test` | `Demo123!` | Medico | Crear/editar datos clínicos (diagnósticos, resultados, historiales, pacientes, citas). No borra. |
+| `recepcion@clinicacore.test` | `Demo123!` | Recepcion | Crear/editar pacientes y citas. No toca datos clínicos ni borra. |
+| `lectura@clinicacore.test` | `Demo123!` | Lectura | Solo consultar; no puede escribir nada. |
+
+El detalle de permisos por recurso está en la tabla de [Roles y accesos](#roles-y-accesos). Tras la carga, inicia sesión con cualquiera de estos usuarios y las pantallas de **Diagnósticos** y **Resultados tratantes** aparecerán pobladas.
 
 ### Limpieza
 
