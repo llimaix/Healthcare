@@ -1,6 +1,6 @@
 # Modelo entidad–relación (propuesta v1)
 
-Propuesta para validar antes de implementar. Los atributos marcados con (*) vienen de la captura del enunciado; el resto son decisiones de diseño del equipo y pueden cambiar.
+Modelo implementado: coincide tabla por tabla y columna por columna con el esquema que crean las migraciones de EF Core en MySQL. Los atributos marcados con (*) vienen de la captura del enunciado; el resto son decisiones de diseño del equipo. La imagen `docs/er/diagrama-er.png` se genera desde este diagrama con `docs/entregable/generar.mjs`.
 
 ## Diagrama
 
@@ -61,6 +61,7 @@ erDiagram
         string correo_electronico "*"
         char genero "* F o M"
         string tipo_sangre "*"
+        bool activo "borrado logico"
     }
     CITA {
         int id_cita PK "*"

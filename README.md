@@ -185,6 +185,20 @@ docker stack rm clinicacore
 - [`infra/scripts/README.md`](infra/scripts/README.md) — detalle de cada script de infraestructura.
 - [`infra/mysql/PROMOCION.md`](infra/mysql/PROMOCION.md) — promoción manual de la réplica.
 
+## Entregable (PDF)
+
+El PDF del entregable está en [`docs/entregable/ProyectoFinal-ClinicaCore.pdf`](docs/entregable/ProyectoFinal-ClinicaCore.pdf). Contiene el diagrama entidad–relación, las capturas de los formularios de diagnósticos y de resultados tratantes, y el enlace para descargar el código.
+
+Se genera automáticamente con el sistema levantado y los datos de demostración cargados (requiere Google Chrome y `mmdc` de mermaid-cli):
+
+```bash
+cd docs/entregable
+npm install
+npm run generar
+```
+
+El script renderiza el diagrama desde `docs/er/modelo-er.md`, toma las capturas con Chrome headless contra http://localhost:8090 (guardadas en `docs/evidencias/`) y arma el PDF. Los datos de la portada se editan en `docs/entregable/portada.json`. El enlace de descarga apunta al último commit que modificó `backend/`, `frontend/` o `infra/`, de modo que el PDF y el código descargado corresponden a la misma versión.
+
 ## Alta disponibilidad y limitación de un solo nodo
 
 La réplica de MySQL y las réplicas de nginx/gateway/api dan tolerancia **a nivel de contenedor**: Swarm reinicia contenedores caídos y mantiene el número de réplicas deseado. Como todo corre en **una sola máquina**, esto no protege contra la caída del equipo completo, y la promoción de la réplica a primario es **manual** (documentada en `infra/mysql/PROMOCION.md`). Se descartaron InnoDB Cluster y configuraciones multinodo por la restricción de un solo nodo.

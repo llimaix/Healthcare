@@ -1,0 +1,12 @@
+{
+  "name": "clinicacore-entregable",
+  "private": true,
+  "type": "module",
+  "description": "Genera el PDF del entregable: diagrama E-R, capturas de formularios y enlace al codigo.",
+  "scripts": {
+    "generar": "node generar.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "24.10.0"
+  }
+}
