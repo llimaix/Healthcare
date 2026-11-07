@@ -93,9 +93,32 @@ curl http://localhost:8090/api/diagnosticos \
 
 Sin ese encabezado, los endpoints protegidos responden `401 Unauthorized`; con un rol sin permiso para la operación, responden `403 Forbidden`.
 
-> Permisos por rol: lectura para cualquier usuario autenticado; crear y editar diagnósticos y resultados tratantes para `Admin` y `Medico`; borrar solo para `Admin`.
-
 Hay ejemplos de peticiones listos para ejecutar en `backend/gateway/ClinicaCore.Gateway.http` y `backend/api/ClinicaCore.Api.http`.
+
+### Roles y accesos
+
+El sistema define cuatro roles. El `register` del Paso 1 acepta cualquiera de ellos (`Admin`, `Medico`, `Recepcion`, `Lectura`); normalmente el primer usuario es `Admin` y desde ahí se crean los demás. Toda lectura exige estar autenticado (token válido); las escrituras dependen del rol.
+
+| Recurso | Leer (GET) | Crear (POST) | Editar (PUT) | Borrar (DELETE) |
+|---|---|---|---|---|
+| Diagnósticos | Autenticado | Admin, Medico | Admin, Medico | Admin |
+| Resultados tratantes | Autenticado | Admin, Medico | Admin, Medico | Admin |
+| Pacientes | Autenticado | Admin, Medico, Recepcion | Admin, Medico, Recepcion | Admin |
+| Historial clínico | Autenticado | Admin, Medico | Admin, Medico | — |
+| Citas | Autenticado | Admin, Medico, Recepcion | Admin, Medico, Recepcion | Admin |
+| Médicos | Autenticado | Admin | Admin | — |
+| Usuarios | `register` es público (crea usuarios); `GET /api/auth/me` devuelve el usuario del token | — | — | — |
+
+Resumen por rol:
+
+- **Admin:** acceso total. Es el único que puede borrar y el único que gestiona médicos.
+- **Medico:** crea y edita datos clínicos (diagnósticos, resultados tratantes, historiales, pacientes, citas). No borra.
+- **Recepcion:** gestiona pacientes y citas (crear y editar). No toca datos clínicos ni borra.
+- **Lectura:** solo consulta; no puede escribir nada.
+
+Sin token, los endpoints protegidos responden `401 Unauthorized`; con un rol sin permiso para la operación, responden `403 Forbidden`.
+
+> Nota sobre la interfaz web: la UI actual incluye las pantallas de **Login**, **Diagnósticos** y **Resultados tratantes** (las dos evidencias del entregable). La gestión de pacientes, médicos, citas y usuarios está disponible **por API** (ver los `.http` y la tabla de arriba), pero aún no tiene pantallas propias en el frontend.
 
 ### Paso opcional — Cargar datos de demostración
 
