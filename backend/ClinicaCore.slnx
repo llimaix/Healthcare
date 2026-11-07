@@ -5,4 +5,13 @@
   <Folder Name="/tests/">
     <Project Path="tests/ClinicaCore.Database.Tests.csproj" />
   </Folder>
+  <Folder Name="/api/">
+    <Project Path="api/ClinicaCore.Api.csproj" />
+  </Folder>
+  <Folder Name="/gateway/">
+    <Project Path="gateway/ClinicaCore.Gateway.csproj" />
+  </Folder>
+  <Folder Name="/tests-api/">
+    <Project Path="tests-api/ClinicaCore.Api.Tests.csproj" />
+  </Folder>
 </Solution>
