@@ -36,3 +36,14 @@ docker run --rm \
   clinicacore-migrator:local
 
 echo "Migraciones aplicadas."
+
+# La Api siembra el catalogo de roles al arrancar, pero en el stack puede haber
+# arrancado ANTES de que existieran las tablas (la siembra es tolerante y no tumba el
+# proceso; ver api/Datos/RolSeeder.cs). Ya con el esquema aplicado, se fuerza un
+# reinicio suave de la Api para que siembre los roles contra la BD migrada. Idempotente:
+# si los roles ya existen, la siembra no hace nada.
+if docker service inspect clinicacore_api >/dev/null 2>&1; then
+  echo "Reiniciando la Api para sembrar roles contra la BD migrada..."
+  docker service update --force clinicacore_api >/dev/null
+  echo "Api reiniciada."
+fi

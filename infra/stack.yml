@@ -17,7 +17,9 @@ services:
     networks:
       - clinicacore-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/healthz || exit 1"]
+      # 127.0.0.1 explicito: en Alpine 'localhost' resuelve antes a ::1 (IPv6) y nginx
+      # solo escucha en IPv4, lo que haria fallar el healthcheck con 'connection refused'.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,7 +41,7 @@ services:
     secrets:
       - jwt_secret
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,7 +65,7 @@ services:
       - jwt_secret
       - mysql_app_password
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5080/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5080/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -121,6 +123,9 @@ services:
       - clinicacore-net
     environment:
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      # Nombre de la BD de la aplicacion: la replica la crea localmente antes de
+      # arrancar la replicacion (el CREATE DATABASE del primario no viaja por binlog).
+      MYSQL_DATABASE: clinicacore
       # Datos de conexion al primario para el init de la replica.
       MYSQL_PRIMARY_HOST: mysql-primary
       MYSQL_PRIMARY_PORT: "3306"

@@ -14,6 +14,12 @@ RUN dotnet publish api/ClinicaCore.Api.csproj -c Release -o /app/publish
 # --- Etapa runtime: ASP.NET Core 10 ---
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
+
+# curl para el HEALTHCHECK del stack: la imagen aspnet (Debian) no trae wget ni curl.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/publish .
 
 # Entrypoint que traduce los Docker secrets a configuracion CLINICACORE_ (ver FEAT-002).

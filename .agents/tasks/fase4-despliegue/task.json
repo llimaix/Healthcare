@@ -1,0 +1,7 @@
+{
+  "task_id": "task-fase4-despliegue",
+  "task_description": "Fase 4 (final) de ClinicaCore EMR: contenerizar y desplegar en Docker Swarm de un solo nodo. Dockerfiles de produccion (Gateway, Api, frontend+nginx), config de nginx como punto de entrada unico, MySQL 8 primario+replica con replicacion simple y promocion manual, tarea migrator de un solo uso (dotnet ef database update contra el primario), infra/stack.yml compose v3 con red overlay y Docker secrets, scripts idempotentes de init/secrets/build/deploy/verify/backup, cableado de variables de entorno, documentacion de despliegue y verificacion REAL end-to-end con Docker (server 28.5.1). Se trabaja sobre main con commits atomicos en espanol; no se reabren decisiones descartadas (InnoDB Cluster, multinodo) ni se commiten secretos reales ni volumenes.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

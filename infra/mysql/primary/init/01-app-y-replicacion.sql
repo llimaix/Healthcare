@@ -19,8 +19,11 @@ CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
 GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, REFERENCES, DROP
   ON clinicacore.* TO '${MYSQL_USER}'@'%';
 
--- Usuario dedicado de replicacion (solo el privilegio necesario).
+-- Usuario dedicado de replicacion. Necesita REPLICATION SLAVE (para que el hilo IO
+-- de la replica lea el binlog) y ademas REPLICATION CLIENT, porque la replica lee las
+-- coordenadas del primario con SHOW MASTER STATUS durante su configuracion inicial
+-- (sin REPLICATION CLIENT ese SHOW falla con ERROR 1227 y la replica no se configura).
 CREATE USER IF NOT EXISTS '${MYSQL_REPL_USER}'@'%' IDENTIFIED BY '${MYSQL_REPL_PASSWORD}';
-GRANT REPLICATION SLAVE ON *.* TO '${MYSQL_REPL_USER}'@'%';
+GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${MYSQL_REPL_USER}'@'%';
 
 FLUSH PRIVILEGES;

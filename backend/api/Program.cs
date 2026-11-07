@@ -17,7 +17,12 @@ var connectionString = builder.Configuration.GetConnectionString("ClinicaCore")
         "Falta la cadena de conexion ConnectionStrings:ClinicaCore.");
 
 builder.Services.AddDbContext<ClinicaCoreDbContext>(options =>
-    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 36))));
+    options.UseMySql(
+        connectionString,
+        new MySqlServerVersion(new Version(8, 0, 36)),
+        // Reintenta ante fallos transitorios de conexion (p. ej. el primario MySQL
+        // aun levantando cuando la Api arranca en el stack de contenedores).
+        mysql => mysql.EnableRetryOnFailure()));
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -60,11 +65,16 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Siembra de roles al arrancar.
+// Siembra de roles al arrancar. En el stack de contenedores la Api puede arrancar
+// antes de que el primario MySQL este listo o de que el migrator aplique el esquema;
+// por eso la siembra reintenta con espera y, si no lo logra, deja arrancar la app
+// (el endpoint /health debe responder) sin tumbar el proceso. Los roles se siembran
+// en el siguiente arranque una vez la BD esta migrada.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ClinicaCoreDbContext>();
-    await RolSeeder.SembrarAsync(db);
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await RolSeeder.SembrarConReintentosAsync(db, logger);
 }
 
 if (app.Environment.IsDevelopment())

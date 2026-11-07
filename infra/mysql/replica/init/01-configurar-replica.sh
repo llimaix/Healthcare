@@ -9,13 +9,29 @@
 # empieza a seguir el binlog desde la posicion actual del primario recien inicializado.
 set -euo pipefail
 
+# leer_secreto <NOMBRE_VAR>: valor desde <VAR>_FILE (Docker secret) o desde <VAR>.
+# El stack entrega las credenciales como *_FILE, no en claro.
+leer_secreto() {
+  nombre="$1"
+  archivo_var="${nombre}_FILE"
+  archivo="$(eval "printf '%s' \"\${${archivo_var}:-}\"")"
+  if [ -n "${archivo}" ] && [ -f "${archivo}" ]; then
+    cat "${archivo}"
+  else
+    eval "printf '%s' \"\${${nombre}:-}\""
+  fi
+}
+
 PRIMARIO_HOST="${MYSQL_PRIMARY_HOST:-mysql-primary}"
 PRIMARIO_PORT="${MYSQL_PRIMARY_PORT:-3306}"
+APP_DATABASE="${MYSQL_DATABASE:-clinicacore}"
 REPL_USER="${MYSQL_REPL_USER:?falta MYSQL_REPL_USER}"
-REPL_PASSWORD="${MYSQL_REPL_PASSWORD:?falta MYSQL_REPL_PASSWORD}"
+REPL_PASSWORD="$(leer_secreto MYSQL_REPL_PASSWORD)"
+ROOT_PASSWORD="$(leer_secreto MYSQL_ROOT_PASSWORD)"
+[ -n "${REPL_PASSWORD}" ] || { echo "falta MYSQL_REPL_PASSWORD(_FILE)" >&2; exit 1; }
 
 # Cliente root local (socket) para configurar esta replica.
-mysql_local() { mysql --protocol=socket -uroot -p"${MYSQL_ROOT_PASSWORD}" "$@"; }
+mysql_local() { mysql --protocol=socket -uroot -p"${ROOT_PASSWORD}" "$@"; }
 # Cliente contra el primario con el usuario de replicacion (red overlay).
 mysql_primario() {
   mysql -h "${PRIMARIO_HOST}" -P "${PRIMARIO_PORT}" \
@@ -33,6 +49,14 @@ estado="$(mysql_primario -N -e 'SHOW MASTER STATUS')"
 LOG_FILE="$(echo "${estado}" | awk '{print $1}')"
 LOG_POS="$(echo "${estado}" | awk '{print $2}')"
 echo "Coordenadas del primario: archivo=${LOG_FILE} posicion=${LOG_POS}"
+
+# La BD de la aplicacion la crea el init del PRIMARIO durante su propio initdb, por lo
+# que ese CREATE DATABASE no viaja por el binlog. Sin la BD presente, la primera DDL
+# replicada (CREATE TABLE con default database clinicacore que aplica el migrator)
+# falla con "Unknown database 'clinicacore'" y detiene el hilo SQL. Se crea aqui, en la
+# replica, antes de arrancar la replicacion para que la DDL replicada tenga donde aplicar.
+echo "Asegurando la base de datos ${APP_DATABASE} en la replica..."
+mysql_local -e "CREATE DATABASE IF NOT EXISTS \`${APP_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
 
 mysql_local <<SQL
 STOP REPLICA;
