@@ -14,14 +14,48 @@ El sistema administra pacientes, médicos, citas, historial clínico, diagnósti
 | Datos | EF Core 9.0.x (Pomelo + MySqlConnector) sobre MySQL 8 |
 | Orquestación | Docker Swarm (un solo nodo), `docker stack deploy` |
 
-## Arquitectura (resumen)
+## Arquitectura
 
-```
-host:8080 → nginx → gateway:5000 → api:5080 → mysql-primary
-                                                     └── binlog ──→ mysql-replica (solo lectura)
+```mermaid
+flowchart LR
+    U(["Usuario<br/>navegador web"])
+
+    subgraph SW["Docker Swarm · un nodo · red overlay interna"]
+        N["<b>nginx</b><br/>2 réplicas<br/>SPA React · proxy /api"]
+        G["<b>gateway</b><br/>2 réplicas<br/>BFF · valida JWT"]
+        A["<b>api</b><br/>2 réplicas<br/>.NET 10 · EF Core · roles"]
+        subgraph DB["MySQL 8"]
+            direction TB
+            P[("<b>mysql-primary</b><br/>lectura y escritura")]
+            R[("<b>mysql-replica</b><br/>solo lectura")]
+        end
+        M["<b>migrator</b><br/>tarea de un solo uso"]
+    end
+
+    U -->|"HTTP :8090"| N
+    N -->|"/api"| G
+    G -->|"Bearer JWT"| A
+    A -->|"SQL"| P
+    P -.->|"replicación"| R
+    M -.->|"migraciones"| P
+
+    classDef usuario fill:#1e3a8a,stroke:#1e3a8a,color:#ffffff
+    classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
+    classDef back fill:#ede9fe,stroke:#7c3aed,color:#3b0764
+    classDef datos fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef tarea fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-dasharray:4 3
+
+    class U usuario
+    class N web
+    class G,A back
+    class P,R datos
+    class M tarea
+
+    style SW fill:#f8fafc,stroke:#94a3b8,color:#334155
+    style DB fill:#f0fdf4,stroke:#86efac,color:#14532d
 ```
 
-- **nginx** es el único puerto publicado al host (`8080`). Todo lo demás vive en una red overlay interna.
+- **nginx** es el único servicio publicado al host (puerto `8090`). Todo lo demás vive en una red overlay interna.
 - **gateway** es el único backend visible; propaga el `Authorization: Bearer` a la Api de dominio.
 - **mysql-primary** acepta escrituras; **mysql-replica** las recibe por replicación y queda en solo lectura.
 - **migrator** es una tarea de un solo uso que aplica las migraciones de EF Core al primario.

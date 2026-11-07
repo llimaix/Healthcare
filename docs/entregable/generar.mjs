@@ -33,6 +33,7 @@ const pdfSalida = join(aqui, 'ProyectoFinal-ClinicaCore.pdf')
 const portada = JSON.parse(readFileSync(join(aqui, 'portada.json'), 'utf8'))
 
 const capturas = {
+  login: join(dirEvidencias, 'login.png'),
   diagLista: join(dirEvidencias, 'diagnosticos-lista.png'),
   diagForm: join(dirEvidencias, 'diagnosticos-formulario.png'),
   resLista: join(dirEvidencias, 'resultados-tratantes-lista.png'),
@@ -110,6 +111,23 @@ async function capturarPantallas(navegador) {
   await pagina.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle0' })
   await pagina.type('input[name=correo]', ADMIN_CORREO)
   await pagina.type('input[name=password]', ADMIN_PASSWORD)
+  // Sin foco ni cursor en el campo de contrasena para que la captura quede limpia.
+  await pagina.evaluate(() => document.activeElement?.blur())
+  const tarjeta = await pagina.$eval('.login-tarjeta', (el) => {
+    const r = el.getBoundingClientRect()
+    return { x: r.x, y: r.y, width: r.width, height: r.height }
+  })
+  const margen = 70
+  await pagina.screenshot({
+    path: capturas.login,
+    clip: {
+      x: tarjeta.x - margen,
+      y: tarjeta.y - margen,
+      width: tarjeta.width + margen * 2,
+      height: tarjeta.height + margen * 2,
+    },
+  })
+  console.log(`    ${capturas.login}`)
   await Promise.all([pagina.waitForNavigation(), pagina.click('button[type=submit]')])
 
   // Diagnosticos: listado
@@ -195,6 +213,11 @@ function construirHtml(version) {
   .er { width: 100%; height: 150mm; object-fit: contain; display: block; margin: 0 auto; }
   .captura { width: 100%; border: 1px solid #d9e2ec; border-radius: 2mm; display: block; }
   .captura.form { max-height: 150mm; width: auto; max-width: 100%; margin: 0 auto; }
+  .captura.login { width: 120mm; margin: 0 auto; }
+  table.tabla { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin: 2mm 0 4mm; }
+  table.tabla th { text-align: left; background: #eef2ff; color: #1e3a8a; padding: 2mm 3mm; border: 1px solid #c7d2fe; }
+  table.tabla td { padding: 2mm 3mm; border: 1px solid #e0e7ff; vertical-align: top; }
+  table.tabla td:first-child { white-space: nowrap; }
   .pie { font-size: 9pt; color: #52606d; margin-top: 2mm; }
   .enlace { font-size: 12.5pt; font-weight: 600; word-break: break-all; }
   .caja { border: 1px solid #c7d7ff; background: #f5f8ff; border-radius: 2mm; padding: 4mm 5mm; margin: 3mm 0 5mm; }
@@ -216,7 +239,8 @@ function construirHtml(version) {
   </table>
   <h3>Contenido</h3>
   <ol class="indice">
-    <li>Diagrama entidad–relación</li>
+    <li>Diagrama entidad–relación y alcance del modelo de datos</li>
+    <li>Acceso al sistema y usuarios de demostración</li>
     <li>Formularios de diagnósticos</li>
     <li>Formularios de resultados tratantes</li>
     <li>Enlace para descargar el código del proyecto</li>
@@ -231,31 +255,75 @@ function construirHtml(version) {
 </section>
 
 <section class="pagina">
-  <h2>2. Formularios de diagnósticos</h2>
-  <h3>2.1 Listado de diagnósticos</h3>
+  <h3>1.1 Alcance del modelo de datos</h3>
+  <p>El modelo sigue la especificación ampliada del curso para este proyecto, que enumera trece entidades:
+  pacientes, médicos, citas, historial clínico, recetas, estudios, facturación, diagnósticos, proveedores,
+  kardex, tipos de cobertura, resultados tratantes y asociación con seguro. Sobre esa base se agregaron las
+  tablas de soporte <code>usuario</code> y <code>rol</code> (autenticación con JWT), <code>insumo</code>,
+  <code>receta_detalle</code> y <code>facturacion_detalle</code>, para un total de 18 tablas.</p>
+  <p>Con ese modelo se cubre el caso de estudio de registros médicos electrónicos. Las tablas que sugiere el
+  caso se corresponden así con las implementadas:</p>
+  <table class="tabla">
+    <thead><tr><th>Tabla del caso de estudio</th><th>Implementación</th></tr></thead>
+    <tbody>
+      <tr><td>Pacientes</td><td><code>paciente</code>: nombre, apellido, fecha de nacimiento, teléfono, correo, CUI, NIT, género y tipo de sangre.</td></tr>
+      <tr><td>Diagnósticos</td><td><code>diagnostico</code>: condición médica (descripción y código CIE-10), alergias y fecha. Se relaciona con el paciente por su historial clínico y con la cita en que se emitió.</td></tr>
+      <tr><td>Medicamentos</td><td><code>insumo</code> (catálogo de medicamentos), <code>receta</code> y <code>receta_detalle</code>: medicamento, dosis, frecuencia, duración e indicaciones, por cita del paciente.</td></tr>
+      <tr><td>Resultados de laboratorio</td><td><code>estudio</code> (prueba solicitada, fecha y estado) y <code>resultado_tratante</code> (resultado, conclusión y fecha, registrados por el médico).</td></tr>
+      <tr><td>Planes de tratamiento</td><td><code>resultado_tratante</code>: la conclusión del médico tratante recoge el tratamiento recomendado, ligado al diagnóstico y con fecha.</td></tr>
+    </tbody>
+  </table>
+  <h3>Proceso elegido para el CRUD</h3>
+  <p>El CRUD se centra en el registro de <b>diagnósticos</b> y de <b>resultados tratantes</b>, porque es el
+  núcleo de la atención clínica: qué condición tiene el paciente y qué concluye y recomienda el médico a partir
+  de ella. El sistema también permite registrar y editar pacientes, citas, médicos y usuarios, con permisos
+  según el rol de cada usuario.</p>
+</section>
+
+<section class="pagina">
+  <h2>2. Acceso al sistema</h2>
+  <h3>2.1 Inicio de sesión</h3>
+  <img class="captura login" src="${img(capturas.login)}" alt="Pantalla de inicio de sesion">
+  <p class="pie">Pantalla <code>/login</code>. La autenticación usa JWT; según el rol del usuario, la aplicación muestra u oculta pantallas y acciones, y el backend rechaza con 403 cualquier operación no permitida.</p>
+  <h3>2.2 Usuarios de demostración</h3>
+  <table class="tabla">
+    <thead><tr><th>Correo</th><th>Contraseña</th><th>Rol</th><th>Permisos</th></tr></thead>
+    <tbody>
+      <tr><td><code>admin@clinicacore.test</code></td><td><code>Admin123!</code></td><td>Admin</td><td>Acceso total: registra, edita y elimina en todas las pantallas; gestiona médicos y usuarios.</td></tr>
+      <tr><td><code>medico@clinicacore.test</code></td><td><code>Demo123!</code></td><td>Medico</td><td>Registra y edita pacientes, citas, historiales, diagnósticos y resultados tratantes. No elimina.</td></tr>
+      <tr><td><code>recepcion@clinicacore.test</code></td><td><code>Demo123!</code></td><td>Recepcion</td><td>Registra y edita pacientes y citas. Diagnósticos, resultados y médicos en consulta.</td></tr>
+      <tr><td><code>lectura@clinicacore.test</code></td><td><code>Demo123!</code></td><td>Lectura</td><td>Solo consulta.</td></tr>
+    </tbody>
+  </table>
+  <p class="pie">Los crea el script opcional <code>infra/scripts/08-cargar-demo.sh</code> junto con los datos de demostración.</p>
+</section>
+
+<section class="pagina">
+  <h2>3. Formularios de diagnósticos</h2>
+  <h3>3.1 Listado de diagnósticos</h3>
   <img class="captura" src="${img(capturas.diagLista)}" alt="Listado de diagnosticos">
   <p class="pie">Pantalla <code>/diagnosticos</code> con sesión de Administrador: filtro por paciente y acciones de crear, editar y eliminar.</p>
 </section>
 <section class="pagina">
-  <h3>2.2 Formulario de registro de diagnóstico</h3>
+  <h3>3.2 Formulario de registro de diagnóstico</h3>
   <img class="captura form" src="${img(capturas.diagForm)}" alt="Formulario de diagnostico">
   <p class="pie">Al elegir el paciente se cargan su historial clínico y sus citas. El código CIE-10 admite hasta 10 caracteres y las alergias son obligatorias.</p>
 </section>
 
 <section class="pagina">
-  <h2>3. Formularios de resultados tratantes</h2>
-  <h3>3.1 Listado de resultados tratantes</h3>
+  <h2>4. Formularios de resultados tratantes</h2>
+  <h3>4.1 Listado de resultados tratantes</h3>
   <img class="captura" src="${img(capturas.resLista)}" alt="Listado de resultados tratantes">
   <p class="pie">Pantalla <code>/resultados-tratantes</code>: filtros por médico y por diagnóstico, y acciones de crear, editar y eliminar.</p>
 </section>
 <section class="pagina">
-  <h3>3.2 Formulario de registro de resultado tratante</h3>
+  <h3>4.2 Formulario de registro de resultado tratante</h3>
   <img class="captura form" src="${img(capturas.resForm)}" alt="Formulario de resultado tratante">
   <p class="pie">El médico tratante es obligatorio; el diagnóstico y el estudio relacionados son opcionales.</p>
 </section>
 
 <section class="pagina">
-  <h2>4. Enlace para descargar el código del proyecto</h2>
+  <h2>5. Enlace para descargar el código del proyecto</h2>
   <div class="caja">
     <p>Repositorio público en GitHub:</p>
     <p class="enlace"><a href="${REPO_URL}">${REPO_URL}</a></p>
@@ -273,7 +341,7 @@ bash infra/scripts/03-deploy.sh
 bash infra/scripts/04-migrar.sh
 bash infra/scripts/05-verificar-salud.sh
 bash infra/scripts/08-cargar-demo.sh   # opcional: datos y usuarios de demostración</pre>
-  <p>La aplicación queda en <code>http://localhost:8090</code>. Usuarios de demostración: <code>admin@clinicacore.test</code> / <code>Admin123!</code>; <code>medico@</code>, <code>recepcion@</code> y <code>lectura@clinicacore.test</code> / <code>Demo123!</code>. El detalle completo está en el <code>README.md</code> del repositorio.</p>
+  <p>La aplicación queda en <code>http://localhost:8090</code>; los usuarios de demostración están en la sección 2.2. El detalle completo está en el <code>README.md</code> del repositorio.</p>
 </section>
 
 </body></html>`
