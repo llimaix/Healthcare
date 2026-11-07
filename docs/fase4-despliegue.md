@@ -337,3 +337,41 @@ Con estas correcciones, un despliegue desde cero (`01` -> `05`) deja el stack co
 las replicas running, el esquema migrado y replicado, la replicacion activa
 (`Replica_IO_Running=Yes`, `Replica_SQL_Running=Yes`), el E2E completo por nginx y la
 tolerancia a fallos a nivel de contenedor funcionando.
+
+## Verificacion de integracion cruzada entre features (re-ejecutada)
+
+Segunda corrida completa de la cadena de integracion sobre Docker 28.5.1, Swarm de un
+nodo, para confirmar que las costuras entre FEAT-001/002/003 (nombres de imagen y
+servicio, red overlay, secrets, cadena de conexion, proxy de nginx) siguen cerradas sin
+tocar codigo. Resultado: todo verde, sin nuevas costuras que arreglar.
+
+- **Backend** (`dotnet tool restore && dotnet build && dotnet test`): build sin warnings
+  (`TreatWarningsAsErrors=true`); pruebas 4 gateway + 12 database + 25 api correctas, 2
+  de integracion MySQL omitidas (`[Skip]`).
+- **Frontend** (`npm run build && npm run lint`): `dist/` generado; eslint sin hallazgos.
+- **Imagenes** (`02-build-imagenes.sh`): `clinicacore-web:local`, `clinicacore-gateway:local`,
+  `clinicacore-api:local`, `clinicacore-migrator:local` construidas sin error.
+- **Despliegue** (`03-deploy.sh`): stack `clinicacore` con todas las replicas running
+  (nginx 2/2, gateway 2/2, api 2/2, mysql-primary 1/1, mysql-replica 1/1, migrator 0/0).
+- **Migracion** (`04-migrar.sh`): idempotente sobre volumenes persistentes
+  (`No migrations were applied. The database is already up to date.`); `SHOW TABLES` en el
+  primario incluye `paciente`, `diagnostico`, `resultado_tratante` y `__EFMigrationsHistory`.
+- **Replicacion**: `Replica_IO_Running=Yes`, `Replica_SQL_Running=Yes`,
+  `Seconds_Behind_Source=0`, sin errores; el paciente creado en el E2E (y los nuevos
+  diagnostico/resultado) aparecen en la replica.
+- **E2E por nginx** (via la red overlay, `http://nginx/`): register Admin (201) -> login
+  (JWT, 365 chars) -> paciente (201) -> medico (201) -> historial (201) -> cita (201) ->
+  diagnostico crear+listar (201/200) -> resultado tratante crear+listar (201/200). La
+  cadena atraviesa nginx -> gateway (`http://gateway:5000`) -> api (`http://api:5080`) ->
+  MySQL primario, confirmando las costuras de nombres de servicio, secret `jwt_secret`
+  compartido por api y gateway, y la cadena de conexion con la password inyectada desde
+  `mysql_app_password`.
+- **Tolerancia a fallos**: `docker kill` de una tarea `api` (exit 137) -> Swarm reconverge
+  a 2/2 automaticamente.
+- **Limpieza**: `docker stack rm clinicacore` ejecutado; sin stacks al terminar.
+
+Nota de entorno (no es un defecto del proyecto): el puerto 8080 del host estaba ocupado
+por un contenedor ajeno (`taskmanager-api`), por lo que el E2E se ejecuto contra el nginx
+del stack a traves de la red overlay en lugar de `http://localhost:8080`. No se toco ese
+contenedor ni la publicacion `8080:80` del stack; en un host con el 8080 libre el acceso
+por `http://localhost:8080` funciona directo.
