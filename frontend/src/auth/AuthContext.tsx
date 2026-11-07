@@ -6,6 +6,7 @@ import { AuthContext, type AuthContextValue } from './authContextDef'
 import { login as apiLogin, me as apiMe, logout as apiLogout } from '../api/auth'
 import { setToken, setOnUnauthorized } from '../api/client'
 import type { UsuarioResponse } from '../types/contratos'
+import { permisosDe } from './permisos'
 
 const CLAVE_TOKEN = 'clinicacore.token'
 const CLAVE_USUARIO = 'clinicacore.usuario'
@@ -74,18 +75,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const u = await apiMe()
     setUsuario(u)
     localStorage.setItem(CLAVE_USUARIO, JSON.stringify(u))
+    return u
   }, [])
 
   const valor = useMemo<AuthContextValue>(() => {
-    const rol = usuario?.rol
+    const permisos = permisosDe(usuario?.rol)
     return {
       token,
       usuario,
       cargando,
       iniciarSesion,
       cerrarSesion,
-      puedeEscribir: rol === 'Admin' || rol === 'Medico',
-      puedeBorrar: rol === 'Admin',
+      permisos,
+      puedeEscribir: permisos.clinicoEscribir,
+      puedeBorrar: permisos.borrar,
     }
   }, [token, usuario, cargando, iniciarSesion, cerrarSesion])
 

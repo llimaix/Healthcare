@@ -68,14 +68,23 @@ el **Gateway** en `:5000` y **MySQL**— remitirse a
 | Pantalla / area                        | Ruta                   | Estado                        |
 | -------------------------------------- | ---------------------- | ----------------------------- |
 | Login + flujo de autenticacion         | `/login`               | **Completa**                  |
+| Pacientes (listar/registrar/editar/baja, abrir historial) | `/pacientes` | **Completa**          |
+| Citas (listar/agendar/editar/eliminar) | `/citas`               | **Completa**                  |
 | Diagnosticos (listar/crear/editar/borrar) | `/diagnosticos`     | **Completa**                  |
 | Resultados tratantes (listar/crear/editar/borrar) | `/resultados-tratantes` | **Completa**         |
-| Resto de las 18 entidades del EMR      | —                      | **Pendiente / fuera de alcance** |
+| Medicos (listar/registrar/editar)      | `/medicos`             | **Completa**                  |
+| Usuarios (listar/crear/cambiar rol/desactivar) | `/usuarios` (solo Admin) | **Completa**          |
+| Recetas, estudios, inventario, facturacion | —                  | **Solo API** (sin pantalla)   |
 
-- **COMPLETAS:** `Login`, `Diagnosticos` y `Resultados tratantes`. Las dos pantallas
-  clinicas tienen acabado presentable (tablas con filtros, formularios de alta/edicion,
-  borrado con confirmacion, estados de carga y mensajes de error) apto para capturas de
-  evidencia.
+Los permisos por rol de la UI viven en `src/auth/permisos.ts` y reflejan los
+`[Authorize(Roles=...)]` de la Api. El menu, los botones y la pantalla inicial dependen del
+rol (Recepcion entra a `/pacientes`; el resto a `/diagnosticos`), y cada pantalla muestra un
+aviso con lo que el rol activo puede hacer.
+
+- **COMPLETAS:** todas las de la tabla. Las dos pantallas clinicas del entregable
+  (Diagnosticos y Resultados tratantes) tienen acabado presentable (tablas con filtros,
+  formularios de alta/edicion, borrado con confirmacion, estados de carga y mensajes de
+  error) apto para capturas de evidencia.
   - **Diagnosticos:** tabla con filtro por paciente; al crear se elige **paciente** y de
     ahi se cargan su **historial** (`/api/historiales?idPaciente=`) y sus **citas**
     (`/api/citas?idPaciente=`) en desplegables, de modo que no se escriben ids a mano.
@@ -84,20 +93,20 @@ el **Gateway** en `:5000` y **MySQL**— remitirse a
     elige **medico** (requerido, via `/api/medicos`) y, opcionalmente, un diagnostico
     (`/api/diagnosticos`). En edicion el medico queda bloqueado (el backend no lo
     modifica). El estudio se captura como id numerico opcional (ver Supuestos).
-- **PENDIENTE / stub:** el CRUD del resto de las entidades del EMR queda **fuera de
-  alcance de la fase 3**. Las pantallas de apoyo (pacientes, historiales, citas,
-  medicos, estudios) existen solo como **lectura** para poblar selectores, no como CRUD.
-- **Fuera de alcance de la UI:** el registro/alta de usuarios (`/api/auth/register`); los
-  usuarios se crean por backend/seed.
+- **Solo API:** recetas, estudios, inventario (proveedores, insumos, kardex) y
+  facturacion no tienen pantalla; se usan por API.
 
 ### Mapa de roles -> permisos reflejado en la UI
 
-| Accion                                      | Roles permitidos         | Reflejo en la UI                                                         |
-| ------------------------------------------- | ------------------------ | ----------------------------------------------------------------------- |
-| Login / ver propio perfil                   | cualquier cuenta activa  | —                                                                       |
-| Listar / ver diagnosticos y resultados      | cualquier autenticado    | tablas visibles para todos los roles (Admin, Medico, Recepcion, Lectura) |
-| Crear / editar diagnosticos y resultados    | **Admin, Medico**        | botones `Nuevo` / `Editar` / `Guardar` solo si el rol puede escribir    |
-| Borrar diagnosticos y resultados            | **solo Admin**           | boton `Eliminar` (y su columna) solo si el rol es Admin                  |
+| Accion                                         | Roles permitidos            | Reflejo en la UI                                   |
+| ---------------------------------------------- | --------------------------- | -------------------------------------------------- |
+| Login / ver propio perfil                      | cualquier cuenta activa     | —                                                  |
+| Listar cualquier recurso clinico               | cualquier autenticado       | tablas visibles para todos los roles               |
+| Registrar / editar pacientes y citas           | **Admin, Medico, Recepcion** | `Registrar paciente`, `Agendar cita`, `Editar`    |
+| Crear / editar diagnosticos, resultados, historiales | **Admin, Medico**     | `Nuevo diagnostico`, `Nuevo resultado`, `Abrir historial` |
+| Registrar / editar medicos                     | **solo Admin**              | `Registrar medico`, `Editar`                       |
+| Borrar (diagnosticos, resultados, citas, baja de pacientes) | **solo Admin** | boton `Eliminar` / `Dar de baja`                  |
+| Gestionar usuarios                             | **solo Admin**              | menu `Usuarios` y ruta `/usuarios`                 |
 
 El rol se obtiene de `GET /api/auth/me` (campo `rol`) tras el login; no se decodifica el
 JWT en el cliente. **La guarda de la UI es cosmetica, no la frontera de seguridad:** el
@@ -138,9 +147,8 @@ de esta fase, para que la revision pueda leerlo sin re-ejecutarlos.
    mas simple y fiable que decodificar el token en el cliente.
 3. **Sin refresh token.** El token expira a los 60 min; al recibir 401 la UI cierra
    sesion y redirige a `/login` para re-autenticar.
-4. **Registro de usuarios fuera de alcance de la UI.** `POST /api/auth/register` existe
-   en el backend pero no se expone en el frontend de esta fase; los usuarios se crean por
-   backend/seed.
+4. **Alta de usuarios desde la pantalla Usuarios.** Usa `POST /api/auth/register` con el
+   token del Admin; el backend rechaza el registro de cualquier otro rol (`403`).
 5. **`idEstudio` en Resultados tratantes se captura como input numerico opcional**, no
    como selector `/api/estudios?idCita=`: ese endpoint exige `idCita` y en el flujo de un
    resultado (que referencia medico/diagnostico) no hay una cita seleccionada de forma

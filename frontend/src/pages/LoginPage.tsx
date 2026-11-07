@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { rutaInicio } from '../auth/permisos'
 import { ApiError } from '../api/client'
 
 export function LoginPage() {
@@ -19,8 +20,8 @@ export function LoginPage() {
     setError(null)
     setEnviando(true)
     try {
-      await iniciarSesion(correo.trim(), password)
-      navigate('/diagnosticos', { replace: true })
+      const usuario = await iniciarSesion(correo.trim(), password)
+      navigate(rutaInicio(usuario.rol), { replace: true })
     } catch (e) {
       if (e instanceof ApiError) {
         setError(

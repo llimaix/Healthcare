@@ -19,12 +19,28 @@ export interface LoginResponse {
   token: string
 }
 
-/** GET /api/auth/me (Bearer). idMedico es null si el usuario no es un medico. */
+/** GET /api/auth/me y GET /api/usuarios. idMedico es null si el usuario no es un medico. */
 export interface UsuarioResponse {
   idUsuario: number
   correo: string
   rol: Rol
   idMedico: number | null
+  activo?: boolean
+}
+
+/** POST /api/auth/register. Con usuarios existentes, solo un Admin autenticado puede usarlo. */
+export interface RegistroRequest {
+  correo: string
+  password: string
+  rol: Rol
+  idMedico?: number | null
+}
+
+/** PUT /api/usuarios/{id} (solo Admin). */
+export interface ActualizarUsuarioRequest {
+  rol: Rol
+  activo: boolean
+  idMedico?: number | null
 }
 
 // --- Diagnosticos (/api/diagnosticos) ---
@@ -102,13 +118,42 @@ export interface PacienteResponse {
   nombre: string
   apellido: string
   cui: string
+  /** DateOnly en formato yyyy-MM-dd. */
+  fechaNacimiento?: string
+  nit?: string
+  telefono?: string
+  correoElectronico?: string
   /** 'F' | 'M' en el backend (char). */
   genero?: string
+  tipoSangre?: string
 }
+
+/** POST /api/pacientes (Admin, Medico, Recepcion). */
+export interface CrearPacienteRequest {
+  nombre: string
+  apellido: string
+  cui: string
+  fechaNacimiento: string
+  nit: string
+  telefono: string
+  correoElectronico: string
+  genero: 'F' | 'M'
+  tipoSangre: string
+}
+
+/** PUT /api/pacientes/{id} (Admin, Medico, Recepcion). El CUI y la fecha de nacimiento no se modifican. */
+export type ActualizarPacienteRequest = Omit<CrearPacienteRequest, 'cui' | 'fechaNacimiento'>
 
 /** GET /api/historiales?idPaciente= */
 export interface HistorialResponse {
   idHistorial: number
+  idPaciente: number
+  fechaApertura: string
+  antecedentes?: string
+}
+
+/** POST /api/historiales (Admin, Medico). Un historial por paciente. */
+export interface CrearHistorialRequest {
   idPaciente: number
   fechaApertura: string
   antecedentes?: string
@@ -125,6 +170,20 @@ export interface CitaResponse {
   estado?: string
 }
 
+/** POST /api/citas (Admin, Medico, Recepcion). */
+export interface CrearCitaRequest {
+  idMedico: number
+  idPaciente: number
+  fechaCita: string
+  /** TimeOnly en formato HH:mm:ss. */
+  hora: string
+  motivo?: string
+  estado?: string
+}
+
+/** PUT /api/citas/{id} (Admin, Medico, Recepcion). Medico y paciente no se modifican. */
+export type ActualizarCitaRequest = Omit<CrearCitaRequest, 'idMedico' | 'idPaciente'>
+
 /** GET /api/medicos. */
 export interface MedicoResponse {
   idMedico: number
@@ -133,6 +192,17 @@ export interface MedicoResponse {
   colegiado: string
   especialidad: string
 }
+
+/** POST /api/medicos (solo Admin). */
+export interface CrearMedicoRequest {
+  nombre: string
+  apellido: string
+  colegiado: string
+  especialidad: string
+}
+
+/** PUT /api/medicos/{id} (solo Admin). El colegiado no se modifica. */
+export type ActualizarMedicoRequest = Omit<CrearMedicoRequest, 'colegiado'>
 
 /** GET /api/estudios?idCita= */
 export interface EstudioResponse {

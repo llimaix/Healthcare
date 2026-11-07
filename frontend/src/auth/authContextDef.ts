@@ -2,6 +2,7 @@
 // react-refresh no se queje de exports mixtos en el .tsx del provider).
 import { createContext } from 'react'
 import type { UsuarioResponse } from '../types/contratos'
+import type { Permisos } from './permisos'
 
 export interface AuthContextValue {
   /** Token Bearer actual (null si no hay sesion). */
@@ -10,13 +11,15 @@ export interface AuthContextValue {
   usuario: UsuarioResponse | null
   /** true mientras se restaura la sesion desde localStorage al arrancar. */
   cargando: boolean
-  /** Inicia sesion: login + carga de /me. Lanza ApiError si falla. */
-  iniciarSesion: (correo: string, password: string) => Promise<void>
+  /** Inicia sesion: login + carga de /me. Devuelve el usuario. Lanza ApiError si falla. */
+  iniciarSesion: (correo: string, password: string) => Promise<UsuarioResponse>
   /** Cierra sesion: limpia token y usuario de memoria y localStorage. */
   cerrarSesion: () => void
-  /** Permiso de escritura (crear/editar diagnosticos y resultados): rol in {Admin, Medico}. */
+  /** Permisos de la UI segun el rol del usuario (ver auth/permisos.ts). */
+  permisos: Permisos
+  /** Atajo: crear/editar diagnosticos y resultados (Admin, Medico). */
   puedeEscribir: boolean
-  /** Permiso de borrado: rol === 'Admin'. */
+  /** Atajo: borrar registros (solo Admin). */
   puedeBorrar: boolean
 }
 
