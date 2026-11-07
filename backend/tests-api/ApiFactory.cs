@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using ClinicaCore.Database;
 using ClinicaCore.Database.Entities;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -75,32 +76,82 @@ public class ApiFactory : WebApplicationFactory<Program>
         });
     }
 
+    /// <summary>Correo del administrador semilla que crean las pruebas.</summary>
+    public const string CorreoAdminSemilla = "admin-semilla@clinicacore.test";
+
+    /// <summary>Contrasena comun de los usuarios creados en las pruebas.</summary>
+    public const string ClavePruebas = "ClaveSegura123";
+
     /// <summary>
-    /// Crea un HttpClient autenticado con un usuario nuevo del rol indicado: registra,
-    /// inicia sesion y coloca el token como Bearer en las cabeceras por defecto.
+    /// Garantiza que exista el Admin semilla. Lo inserta directo en la BD (con hash)
+    /// porque, una vez hay usuarios, el registro exige un Admin autenticado.
     /// </summary>
-    public async Task<HttpClient> ClienteAutenticadoAsync(string rol)
+    public async Task AsegurarAdminSemillaAsync()
+    {
+        await ConContextoAsync(async db =>
+        {
+            if (await db.Usuarios.AnyAsync(u => u.Correo == CorreoAdminSemilla))
+            {
+                return;
+            }
+
+            var rolAdmin = await db.Roles.SingleAsync(r => r.Nombre == "Admin");
+            var admin = new Usuario
+            {
+                Correo = CorreoAdminSemilla,
+                IdRol = rolAdmin.IdRol,
+                Activo = true,
+            };
+            admin.PasswordHash = new PasswordHasher<Usuario>().HashPassword(admin, ClavePruebas);
+            db.Usuarios.Add(admin);
+            await db.SaveChangesAsync();
+        });
+    }
+
+    /// <summary>HttpClient autenticado como el Admin semilla.</summary>
+    public async Task<HttpClient> ClienteAdminSemillaAsync()
+    {
+        await AsegurarAdminSemillaAsync();
+        return await ClienteConLoginAsync(CorreoAdminSemilla, ClavePruebas);
+    }
+
+    /// <summary>Inicia sesion y devuelve un HttpClient con el token como Bearer.</summary>
+    public async Task<HttpClient> ClienteConLoginAsync(string correo, string password)
     {
         var client = CreateClient();
-        var correo = $"{rol.ToLowerInvariant()}-{Guid.NewGuid():N}@clinicacore.test";
-
-        await client.PostAsJsonAsync("/api/auth/register", new
-        {
-            correo,
-            password = "ClaveSegura123",
-            rol,
-        });
-
-        var login = await client.PostAsJsonAsync("/api/auth/login", new
-        {
-            correo,
-            password = "ClaveSegura123",
-        });
+        var login = await client.PostAsJsonAsync("/api/auth/login", new { correo, password });
+        login.EnsureSuccessStatusCode();
         var cuerpo = await login.Content.ReadFromJsonAsync<TokenDto>();
 
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", cuerpo!.Token);
         return client;
+    }
+
+    /// <summary>
+    /// Crea un usuario nuevo del rol indicado (registrado por el Admin semilla) y
+    /// devuelve un HttpClient autenticado con el.
+    /// </summary>
+    public async Task<HttpClient> ClienteAutenticadoAsync(string rol)
+    {
+        var correo = await CrearUsuarioAsync(rol);
+        return await ClienteConLoginAsync(correo, ClavePruebas);
+    }
+
+    /// <summary>Registra (como Admin semilla) un usuario del rol dado y devuelve su correo.</summary>
+    public async Task<string> CrearUsuarioAsync(string rol)
+    {
+        var admin = await ClienteAdminSemillaAsync();
+        var correo = $"{rol.ToLowerInvariant()}-{Guid.NewGuid():N}@clinicacore.test";
+
+        var registro = await admin.PostAsJsonAsync("/api/auth/register", new
+        {
+            correo,
+            password = ClavePruebas,
+            rol,
+        });
+        registro.EnsureSuccessStatusCode();
+        return correo;
     }
 
     private sealed class TokenDto

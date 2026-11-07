@@ -17,17 +17,41 @@ public class AuthController : ControllerBase
         _auth = auth;
     }
 
-    /// <summary>Registra un usuario nuevo.</summary>
+    /// <summary>
+    /// Registra un usuario nuevo.
+    /// - Sistema vacio (sin usuarios): se permite sin token, solo para crear el primer
+    ///   usuario, que debe tener rol Admin.
+    /// - Con usuarios existentes: solo un Admin autenticado puede registrar usuarios.
+    /// </summary>
     [HttpPost("register")]
     public async Task<IActionResult> Register(
         [FromBody] RegistroRequest request, CancellationToken ct)
     {
+        if (await _auth.HayUsuariosAsync(ct))
+        {
+            if (User.Identity?.IsAuthenticated != true)
+            {
+                return Unauthorized(new { error = "Solo un administrador puede registrar usuarios." });
+            }
+
+            if (!User.IsInRole("Admin"))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { error = "Solo un administrador puede registrar usuarios." });
+            }
+        }
+        else if (request.Rol != "Admin")
+        {
+            return BadRequest(new { error = "El primer usuario del sistema debe tener rol Admin." });
+        }
+
         var (resultado, usuario) = await _auth.RegistrarAsync(request, ct);
         return resultado switch
         {
             AuthResultado.Exito => CreatedAtAction(nameof(Me), null, usuario),
             AuthResultado.CorreoDuplicado => Conflict(new { error = "El correo ya esta registrado." }),
             AuthResultado.RolInexistente => BadRequest(new { error = "El rol indicado no existe." }),
+            AuthResultado.MedicoInexistente => BadRequest(new { error = "El medico indicado no existe." }),
             _ => BadRequest(),
         };
     }
@@ -51,10 +75,7 @@ public class AuthController : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
-        var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
-            ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (!int.TryParse(sub, out var idUsuario))
+        if (!int.TryParse(IdUsuarioDelToken(User), out var idUsuario))
         {
             return Unauthorized();
         }
@@ -62,4 +83,9 @@ public class AuthController : ControllerBase
         var usuario = await _auth.ObtenerPorIdAsync(idUsuario, ct);
         return usuario is null ? NotFound() : Ok(usuario);
     }
+
+    /// <summary>Extrae el id de usuario (claim sub) del token.</summary>
+    internal static string? IdUsuarioDelToken(ClaimsPrincipal user) =>
+        user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+        ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
 }

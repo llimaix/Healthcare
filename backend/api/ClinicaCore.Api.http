@@ -10,8 +10,11 @@
 ### 0. Health (sin autenticacion)
 GET {{host}}/health
 
-### 1. Registro de un usuario Medico (ajustar idMedico a un medico existente, o quitarlo)
+### 1. Registro de un usuario Medico (ajustar idMedico a un medico existente, o quitarlo).
+### Con el sistema vacio solo se acepta sin token un primer usuario con rol Admin; despues,
+### el registro exige el token de un Admin (sin token -> 401, otro rol -> 403).
 POST {{host}}/api/auth/register
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {

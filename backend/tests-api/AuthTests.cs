@@ -18,16 +18,16 @@ public class AuthTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Registro_CreaUsuarioConHash()
+    public async Task Registro_PorAdmin_CreaUsuarioConHash()
     {
-        var client = _factory.CreateClient();
+        var admin = await _factory.ClienteAdminSemillaAsync();
         var correo = $"nuevo-{Guid.NewGuid():N}@clinicacore.test";
 
-        var respuesta = await client.PostAsJsonAsync("/api/auth/register", new
+        var respuesta = await admin.PostAsJsonAsync("/api/auth/register", new
         {
             correo,
             password = "ClaveSegura123",
-            rol = "Admin",
+            rol = "Medico",
         });
 
         Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
@@ -41,22 +41,49 @@ public class AuthTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Registro_SinToken_ConUsuariosExistentes_Devuelve401()
+    {
+        await _factory.AsegurarAdminSemillaAsync();
+        var anonimo = _factory.CreateClient();
+
+        var respuesta = await anonimo.PostAsJsonAsync("/api/auth/register", new
+        {
+            correo = $"intruso-{Guid.NewGuid():N}@clinicacore.test",
+            password = "ClaveSegura123",
+            rol = "Admin",
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, respuesta.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Medico")]
+    [InlineData("Recepcion")]
+    [InlineData("Lectura")]
+    public async Task Registro_PorRolNoAdmin_Devuelve403(string rol)
+    {
+        var client = await _factory.ClienteAutenticadoAsync(rol);
+
+        var respuesta = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            correo = $"otro-{Guid.NewGuid():N}@clinicacore.test",
+            password = "ClaveSegura123",
+            rol = "Lectura",
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    [Fact]
     public async Task Login_CredencialesValidas_DevuelveTokenConClaimRole()
     {
+        var correo = await _factory.CrearUsuarioAsync("Medico");
         var client = _factory.CreateClient();
-        var correo = $"login-{Guid.NewGuid():N}@clinicacore.test";
-
-        await client.PostAsJsonAsync("/api/auth/register", new
-        {
-            correo,
-            password = "ClaveSegura123",
-            rol = "Medico",
-        });
 
         var respuesta = await client.PostAsJsonAsync("/api/auth/login", new
         {
             correo,
-            password = "ClaveSegura123",
+            password = ApiFactory.ClavePruebas,
         });
 
         Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
@@ -72,15 +99,8 @@ public class AuthTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Login_CredencialesInvalidas_Falla()
     {
+        var correo = await _factory.CrearUsuarioAsync("Lectura");
         var client = _factory.CreateClient();
-        var correo = $"malo-{Guid.NewGuid():N}@clinicacore.test";
-
-        await client.PostAsJsonAsync("/api/auth/register", new
-        {
-            correo,
-            password = "ClaveSegura123",
-            rol = "Lectura",
-        });
 
         var respuesta = await client.PostAsJsonAsync("/api/auth/login", new
         {
@@ -102,25 +122,8 @@ public class AuthTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Me_ConTokenValido_DevuelveElUsuario()
     {
-        var client = _factory.CreateClient();
-        var correo = $"me-{Guid.NewGuid():N}@clinicacore.test";
-
-        await client.PostAsJsonAsync("/api/auth/register", new
-        {
-            correo,
-            password = "ClaveSegura123",
-            rol = "Recepcion",
-        });
-
-        var login = await client.PostAsJsonAsync("/api/auth/login", new
-        {
-            correo,
-            password = "ClaveSegura123",
-        });
-        var cuerpo = await login.Content.ReadFromJsonAsync<LoginResponseDto>();
-
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", cuerpo!.Token);
+        var correo = await _factory.CrearUsuarioAsync("Recepcion");
+        var client = await _factory.ClienteConLoginAsync(correo, ApiFactory.ClavePruebas);
 
         var respuesta = await client.GetAsync("/api/auth/me");
         Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
@@ -129,6 +132,66 @@ public class AuthTests : IClassFixture<ApiFactory>
         Assert.NotNull(usuario);
         Assert.Equal(correo, usuario!.Correo);
         Assert.Equal("Recepcion", usuario.Rol);
+    }
+
+    [Fact]
+    public async Task Usuarios_Listar_ComoAdmin_DevuelveLista()
+    {
+        var admin = await _factory.ClienteAdminSemillaAsync();
+        var respuesta = await admin.GetAsync("/api/usuarios");
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        var lista = await respuesta.Content.ReadFromJsonAsync<List<UsuarioResponseDto>>();
+        Assert.Contains(lista!, u => u.Correo == ApiFactory.CorreoAdminSemilla);
+    }
+
+    [Theory]
+    [InlineData("Medico")]
+    [InlineData("Recepcion")]
+    [InlineData("Lectura")]
+    public async Task Usuarios_Listar_ComoNoAdmin_Devuelve403(string rol)
+    {
+        var client = await _factory.ClienteAutenticadoAsync(rol);
+        var respuesta = await client.GetAsync("/api/usuarios");
+        Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Usuarios_Desactivar_ImpideElLogin()
+    {
+        var correo = await _factory.CrearUsuarioAsync("Lectura");
+        var admin = await _factory.ClienteAdminSemillaAsync();
+        var lista = await admin.GetFromJsonAsync<List<UsuarioResponseDto>>("/api/usuarios");
+        var usuario = lista!.Single(u => u.Correo == correo);
+
+        var actualizar = await admin.PutAsJsonAsync($"/api/usuarios/{usuario.IdUsuario}", new
+        {
+            rol = "Lectura",
+            activo = false,
+        });
+        Assert.Equal(HttpStatusCode.OK, actualizar.StatusCode);
+
+        var login = await _factory.CreateClient().PostAsJsonAsync("/api/auth/login", new
+        {
+            correo,
+            password = ApiFactory.ClavePruebas,
+        });
+        Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
+    }
+
+    [Fact]
+    public async Task Usuarios_AdminNoPuedeQuitarseSuRol()
+    {
+        var admin = await _factory.ClienteAdminSemillaAsync();
+        var yo = await admin.GetFromJsonAsync<UsuarioResponseDto>("/api/auth/me");
+
+        var respuesta = await admin.PutAsJsonAsync($"/api/usuarios/{yo!.IdUsuario}", new
+        {
+            rol = "Lectura",
+            activo = true,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
     }
 
     [Fact]
@@ -183,5 +246,6 @@ public class AuthTests : IClassFixture<ApiFactory>
         public string Correo { get; set; } = null!;
         public string Rol { get; set; } = null!;
         public int? IdMedico { get; set; }
+        public bool Activo { get; set; }
     }
 }

@@ -122,6 +122,18 @@ public class CitaController : ControllerBase
             return ApiProblems.NoEncontrado($"No existe una cita con id {id}.");
         }
 
+        // Las FKs hacia cita son Restrict: se valida antes para responder 409 en vez de 500.
+        var tieneRegistros =
+            await _db.Diagnosticos.AnyAsync(d => d.IdCita == id, ct)
+            || await _db.Recetas.AnyAsync(r => r.IdCita == id, ct)
+            || await _db.Estudios.AnyAsync(e => e.IdCita == id, ct)
+            || await _db.Facturaciones.AnyAsync(f => f.IdCita == id, ct);
+        if (tieneRegistros)
+        {
+            return ApiProblems.Conflicto(
+                "La cita tiene diagnosticos, recetas, estudios o facturacion asociados; no se puede eliminar.");
+        }
+
         _db.Citas.Remove(cita);
         await _db.SaveChangesAsync(ct);
         return NoContent();

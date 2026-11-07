@@ -42,6 +42,13 @@ de entrada unico (BFF) que luego podra ubicarse detras de nginx sin cambiar los 
   60 minutos). **No hay refresh token en esta fase**: cuando expira se vuelve a iniciar sesion.
 - **Login.** `POST /api/auth/login` con correo y contrasena devuelve `{ "token": "..." }`.
   El login solo tiene exito para usuarios con `activo = true`.
+- **Registro.** `POST /api/auth/register` solo es anonimo mientras la tabla `usuario` esta
+  vacia, y en ese caso exige rol `Admin` (arranque del sistema). Con usuarios existentes,
+  sin token responde `401` y con un rol distinto de `Admin` responde `403`. El Gateway deja
+  `/api/auth/*` sin exigir token pero reenvia el `Authorization`, asi que la Api decide.
+- **Gestion de usuarios.** `GET /api/usuarios` y `PUT /api/usuarios/{id}` (rol, `activo`,
+  `idMedico`) son solo para `Admin`. Un Admin no puede quitarse su propio rol ni desactivar
+  su cuenta (`400`).
 
 El Gateway valida el JWT con los **mismos** parametros (issuer/audience/secret) que la Api,
 por lo que ambos servicios deben compartir el valor de `Jwt:Secret`.

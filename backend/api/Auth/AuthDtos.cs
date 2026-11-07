@@ -44,4 +44,17 @@ public class UsuarioResponse
     public string Correo { get; set; } = null!;
     public string Rol { get; set; } = null!;
     public int? IdMedico { get; set; }
+    public bool Activo { get; set; }
+}
+
+/// <summary>Datos que un Admin puede cambiar de un usuario existente.</summary>
+public class ActualizarUsuarioRequest
+{
+    [Required]
+    public string Rol { get; set; } = null!;
+
+    [Required]
+    public bool Activo { get; set; }
+
+    public int? IdMedico { get; set; }
 }
