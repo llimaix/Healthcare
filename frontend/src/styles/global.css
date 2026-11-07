@@ -134,4 +134,267 @@ body,
 
 .contenido {
   padding: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.barra-titulo {
+  font-size: 1.05rem;
+}
+
+.barra-link {
+  color: #52606d;
+  text-decoration: none;
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+
+.barra-link.activo {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+.barra-rol {
+  display: inline-block;
+  margin-left: 0.25rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: #e5edff;
+  color: #1e40af;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* --- Paneles y tablas --- */
+.panel {
+  background: #ffffff;
+  border: 1px solid #e4e7eb;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 16px rgba(31, 41, 51, 0.04);
+}
+
+.panel-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.panel-titulo {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.panel-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #52606d;
+}
+
+.filtro select,
+.campo select,
+.campo textarea,
+.campo input[type='number'] {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbd2d9;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: #ffffff;
+}
+
+.filtro select:focus,
+.campo select:focus,
+.campo textarea:focus,
+.campo input:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+  border-color: #2563eb;
+}
+
+.tabla-contenedor {
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabla th,
+.tabla td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #eef1f5;
+  vertical-align: top;
+}
+
+.tabla thead th {
+  background: #f5f7fa;
+  color: #52606d;
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.tabla tbody tr:hover {
+  background: #fafbfc;
+}
+
+.celda-acciones {
+  display: flex;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.vacio {
+  margin: 0;
+  padding: 1.5rem;
+  text-align: center;
+  color: #7b8794;
+}
+
+/* --- Formularios --- */
+.form-panel {
+  border-color: #c7d7ff;
+}
+
+.formulario {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.formulario .campo textarea {
+  grid-column: 1 / -1;
+}
+
+.formulario-acciones {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.campo-error {
+  color: #9b1c1c;
+  font-size: 0.8rem;
+}
+
+.nota {
+  color: #7b8794;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .formulario {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Botones extra --- */
+.boton-peligro {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #f0b4b4;
+  border-radius: 8px;
+  background: #fde8e8;
+  color: #9b1c1c;
+  cursor: pointer;
+}
+
+.boton-peligro:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* --- Estados y mensajes --- */
+.estado-carga {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.25rem;
+  color: #52606d;
+}
+
+.estado-carga-spinner {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid #cbd2d9;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mensaje-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #fde8e8;
+  color: #9b1c1c;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* --- Modal de confirmacion --- */
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 41, 51, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 10;
+}
+
+.modal-tarjeta {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 50px rgba(31, 41, 51, 0.25);
+}
+
+.modal-titulo {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.modal-mensaje {
+  margin: 0 0 1.25rem;
+  color: #52606d;
+}
+
+.modal-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
 }
