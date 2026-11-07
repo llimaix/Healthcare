@@ -1,4 +1,5 @@
 using System.Text;
+using ClinicaCore.Gateway.Reenvio;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -40,7 +41,7 @@ builder.Services.AddAuthorization();
 
 // Cliente tipado hacia el servicio de dominio (BFF).
 var apiBaseUrl = builder.Configuration["Services:ApiBaseUrl"] ?? "http://localhost:5080";
-builder.Services.AddHttpClient("ClinicaCoreApi", client =>
+builder.Services.AddHttpClient<ClinicaCoreApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
 });
@@ -60,5 +61,32 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+
+// Reenvio de la superficie publica al servicio de dominio via el HttpClient tipado.
+// Reproduce estado, cabeceras relevantes y cuerpo de la respuesta de la Api.
+static async Task Reproducir(HttpResponseMessage origen, HttpResponse destino, CancellationToken ct)
+{
+    destino.StatusCode = (int)origen.StatusCode;
+    if (origen.Content.Headers.ContentType is { } tipo)
+    {
+        destino.ContentType = tipo.ToString();
+    }
+    await origen.Content.CopyToAsync(destino.Body, ct);
+}
+
+// Autenticacion (login/registro) sin token; el resto de /api requiere JWT valido.
+app.Map("/api/auth/{**resto}", async (
+    HttpContext contexto, ClinicaCoreApiClient api, CancellationToken ct) =>
+{
+    using var respuesta = await api.ReenviarAsync(contexto.Request, ct);
+    await Reproducir(respuesta, contexto.Response, ct);
+}).AllowAnonymous();
+
+app.Map("/api/{**resto}", async (
+    HttpContext contexto, ClinicaCoreApiClient api, CancellationToken ct) =>
+{
+    using var respuesta = await api.ReenviarAsync(contexto.Request, ct);
+    await Reproducir(respuesta, contexto.Response, ct);
+}).RequireAuthorization();
 
 app.Run();
