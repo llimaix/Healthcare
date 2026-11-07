@@ -2,10 +2,11 @@
 //   1. Renderiza el diagrama E-R desde docs/er/modelo-er.md (Mermaid) a PNG.
 //   2. Toma capturas de los formularios de Diagnosticos y Resultados tratantes contra
 //      el sistema en ejecucion (http://localhost:8090 por defecto), con Chrome headless.
-//   3. Arma el PDF con portada, las tres evidencias y el enlace al codigo fuente.
+//   3. Arma el PDF y el DOCX, con el mismo contenido: portada, evidencias y enlace al codigo.
+//      El PDF lo imprime Chrome; el DOCX lo convierte pandoc desde el mismo HTML.
 //
 // Requisitos: stack levantado con los datos de demostracion (infra/scripts/08-cargar-demo.sh),
-// Google Chrome instalado y mermaid-cli (mmdc) en el PATH.
+// Google Chrome instalado, y mermaid-cli (mmdc) y pandoc en el PATH.
 //
 // Uso (desde docs/entregable/):  npm install && npm run generar
 // Variables opcionales: BASE_URL, CHROME_PATH, ADMIN_CORREO, ADMIN_PASSWORD, REPO_URL.
@@ -30,6 +31,9 @@ const REPO_URL = process.env.REPO_URL ?? 'https://github.com/llimaix/Healthcare'
 const dirEvidencias = join(raiz, 'docs', 'evidencias')
 const pngEr = join(raiz, 'docs', 'er', 'diagrama-er.png')
 const pdfSalida = join(aqui, 'ProyectoFinal-ClinicaCore.pdf')
+const docxSalida = join(aqui, 'ProyectoFinal-ClinicaCore.docx')
+const filtroDocx = join(aqui, 'docx-filtro.lua')
+const plantillaDocx = join(aqui, 'plantilla.docx') // estilos de Word: Calibri, titulos y tablas como en el PDF
 const portada = JSON.parse(readFileSync(join(aqui, 'portada.json'), 'utf8'))
 
 const capturas = {
@@ -174,13 +178,15 @@ async function capturarPantallas(navegador) {
   await pagina.close()
 }
 
-// --- 3. PDF --------------------------------------------------------------------
+// --- 3. PDF y DOCX ---------------------------------------------------------------
 function escaparHtml(texto) {
   return String(texto).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 }
 
-function construirHtml(version) {
-  const img = (ruta) => pathToFileURL(ruta).href
+/** Construye el documento. modo 'pdf' (Chrome) o 'docx' (pandoc, rutas locales). */
+function construirHtml(version, modo = 'pdf') {
+  const img = (ruta) => (modo === 'pdf' ? pathToFileURL(ruta).href : ruta)
+  const esteDocumento = modo === 'pdf' ? 'este PDF' : 'este documento'
   const fecha = new Date().toLocaleDateString('es-GT', { day: 'numeric', month: 'long', year: 'numeric' })
   const filaPortada = (etiqueta, valor) =>
     valor ? `<tr><th>${etiqueta}</th><td>${escaparHtml(valor)}</td></tr>` : ''
@@ -188,7 +194,7 @@ function construirHtml(version) {
   const urlZip = `${REPO_URL}/archive/${version.commit}.zip`
 
   return `<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><title>ClinicaCore — Proyecto final</title>
+<html lang="es"><head><meta charset="utf-8">${modo === 'pdf' ? '<title>ClinicaCore — Proyecto final</title>' : ''}
 <style>
   @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
   @page horizontal { size: A4 landscape; margin: 12mm; }
@@ -327,7 +333,7 @@ function construirHtml(version) {
   <div class="caja">
     <p>Repositorio público en GitHub:</p>
     <p class="enlace"><a href="${REPO_URL}">${REPO_URL}</a></p>
-    <p>Descarga directa (ZIP) de la versión documentada en este PDF:</p>
+    <p>Descarga directa (ZIP) de la versión documentada en ${esteDocumento}:</p>
     <p class="enlace"><a href="${urlZip}">${urlZip}</a></p>
   </div>
   <p>Las capturas de este documento se tomaron sobre el commit <code>${version.corto}</code> de la rama <code>main</code>
@@ -356,6 +362,18 @@ async function generarPdf(navegador, version) {
   await pagina.pdf({ path: pdfSalida, printBackground: true, preferCSSPageSize: true })
   await pagina.close()
   console.log(`    ${pdfSalida}`)
+}
+
+function generarDocx(version) {
+  paso('Armando el DOCX')
+  const html = join(tmpdir(), 'clinicacore-entregable-docx.html')
+  writeFileSync(html, construirHtml(version, 'docx'))
+  execFileSync(
+    'pandoc',
+    [html, '-f', 'html', '-t', 'docx', '--reference-doc', plantillaDocx, '--lua-filter', filtroDocx, '-o', docxSalida],
+    { stdio: 'inherit' },
+  )
+  console.log(`    ${docxSalida}`)
 }
 
 // --- main ----------------------------------------------------------------------
@@ -388,6 +406,7 @@ async function main() {
   try {
     await capturarPantallas(navegador)
     await generarPdf(navegador, version)
+    generarDocx(version)
   } finally {
     await navegador.close()
   }

@@ -221,9 +221,14 @@ docker stack rm clinicacore
 
 ## Entregable (PDF)
 
-El PDF del entregable está en [`docs/entregable/ProyectoFinal-ClinicaCore.pdf`](docs/entregable/ProyectoFinal-ClinicaCore.pdf). Contiene el diagrama entidad–relación, las capturas de los formularios de diagnósticos y de resultados tratantes, y el enlace para descargar el código.
+El entregable está en dos formatos con el mismo contenido:
 
-Se genera automáticamente con el sistema levantado y los datos de demostración cargados (requiere Google Chrome y `mmdc` de mermaid-cli):
+- PDF: [`docs/entregable/ProyectoFinal-ClinicaCore.pdf`](docs/entregable/ProyectoFinal-ClinicaCore.pdf)
+- Word: [`docs/entregable/ProyectoFinal-ClinicaCore.docx`](docs/entregable/ProyectoFinal-ClinicaCore.docx)
+
+Contienen el diagrama entidad–relación y el alcance del modelo de datos, el acceso al sistema con los usuarios de demostración, las capturas de los formularios de diagnósticos y de resultados tratantes, y el enlace para descargar el código.
+
+Se generan automáticamente con el sistema levantado y los datos de demostración cargados (requiere Google Chrome, `mmdc` de mermaid-cli y `pandoc`):
 
 ```bash
 cd docs/entregable
@@ -231,7 +236,7 @@ npm install
 npm run generar
 ```
 
-El script renderiza el diagrama desde `docs/er/modelo-er.md`, toma las capturas con Chrome headless contra http://localhost:8090 (guardadas en `docs/evidencias/`) y arma el PDF. Los datos de la portada se editan en `docs/entregable/portada.json`. El enlace de descarga apunta al último commit que modificó `backend/`, `frontend/` o `infra/`, de modo que el PDF y el código descargado corresponden a la misma versión.
+El script renderiza el diagrama desde `docs/er/modelo-er.md`, toma las capturas con Chrome headless contra http://localhost:8090 (guardadas en `docs/evidencias/`) y arma los dos documentos a partir del mismo contenido: Chrome imprime el PDF y pandoc produce el DOCX con los estilos de `plantilla.docx` y el filtro `docx-filtro.lua` (saltos de página y página apaisada para el diagrama). Los datos de la portada se editan en `docs/entregable/portada.json`. El enlace de descarga apunta al último commit que modificó `backend/`, `frontend/` o `infra/`, de modo que el PDF y el código descargado corresponden a la misma versión.
 
 ## Alta disponibilidad y limitación de un solo nodo
 
